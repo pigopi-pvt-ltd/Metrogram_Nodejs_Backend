@@ -19,6 +19,63 @@ const customerSchema = new mongoose.Schema(
       enum: ['REGULAR', 'PREMIUM', 'VIP'],
       default: 'REGULAR'
     },
+    aadharNumber: {
+      type: String,
+      trim: true,
+      sparse: true,
+      default: null
+    },
+    panNumber: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      sparse: true,
+      default: null
+    },
+    hasCard: {
+      type: Boolean,
+      default: false
+    },
+    activeCard: {
+      cardPlan: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'CardPlan',
+        default: null
+      },
+      planName: { type: String, default: null },
+      planType: { type: String, default: null },
+      cardNumber: { type: String, default: null },
+      price: { type: Number, default: 0 },
+      purchasedAt: { type: Date, default: null },
+      expiresAt: { type: Date, default: null },
+      status: {
+        type: String,
+        enum: ['ACTIVE', 'EXPIRED', 'CANCELLED', 'NONE'],
+        default: 'NONE'
+      }
+    },
+    cardHistory: [
+      {
+        cardPlan: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'CardPlan'
+        },
+        planName: { type: String },
+        planType: { type: String },
+        cardNumber: { type: String },
+        price: { type: Number },
+        purchasedAt: { type: Date, default: Date.now },
+        expiresAt: { type: Date },
+        assignedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User'
+        },
+        paymentStatus: {
+          type: String,
+          default: 'COMPLETED'
+        }
+      }
+    ],
     address: {
       street: { type: String, trim: true },
       city: { type: String, trim: true },

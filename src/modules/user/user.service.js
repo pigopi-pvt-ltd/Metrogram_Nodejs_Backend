@@ -9,6 +9,8 @@ import '../superAdmin/superAdmin.model.js';
 import '../manager/manager.model.js';
 import '../employee/employee.model.js';
 import '../customer/customer.model.js';
+import '../card/cardPlan.model.js';
+import '../service/service.model.js';
 
 class UserService {
   /**

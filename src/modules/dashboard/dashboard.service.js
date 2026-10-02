@@ -2,6 +2,8 @@ import User from '../user/user.model.js';
 import Manager from '../manager/manager.model.js';
 import Employee from '../employee/employee.model.js';
 import Customer from '../customer/customer.model.js';
+import Service from '../service/service.model.js';
+import CardPlan from '../card/cardPlan.model.js';
 import { ROLES } from '../../constants/roles.js';
 
 class DashboardService {
@@ -19,6 +21,8 @@ class DashboardService {
         totalCustomers,
         activeUsers,
         inactiveUsers,
+        totalServices,
+        totalCardPlans,
         recentUsers
       ] = await Promise.all([
         User.countDocuments(),
@@ -27,6 +31,8 @@ class DashboardService {
         User.countDocuments({ role: ROLES.CUSTOMER }),
         User.countDocuments({ isActive: true }),
         User.countDocuments({ isActive: false }),
+        Service.countDocuments(),
+        CardPlan.countDocuments(),
         User.find()
           .populate('profile')
           .populate('createdBy', 'firstName lastName email role')
@@ -42,7 +48,9 @@ class DashboardService {
           totalEmployees,
           totalCustomers,
           activeUsers,
-          inactiveUsers
+          inactiveUsers,
+          totalServices,
+          totalCardPlans
         },
         recentActivity: recentUsers
       };
@@ -133,6 +141,10 @@ class DashboardService {
       customerInfo: {
         customerCode: customerProfile?.customerCode,
         membershipType: customerProfile?.membershipType,
+        aadharNumber: customerProfile?.aadharNumber,
+        panNumber: customerProfile?.panNumber,
+        hasCard: customerProfile?.hasCard,
+        activeCard: customerProfile?.activeCard,
         loyaltyPoints: customerProfile?.loyaltyPoints,
         address: customerProfile?.address
       }

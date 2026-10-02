@@ -31,6 +31,8 @@ class CustomerService {
       user: user._id,
       customerCode: profileData.customerCode || `CUST-${Date.now()}`,
       membershipType: profileData.membershipType || 'REGULAR',
+      aadharNumber: profileData.aadharNumber || null,
+      panNumber: profileData.panNumber ? profileData.panNumber.toUpperCase() : null,
       address: profileData.address || {},
       loyaltyPoints: profileData.loyaltyPoints || 0
     });

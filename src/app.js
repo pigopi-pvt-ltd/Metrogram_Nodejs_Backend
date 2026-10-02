@@ -11,6 +11,8 @@ import managerRoutes from "./modules/manager/manager.routes.js";
 import employeeRoutes from "./modules/employee/employee.routes.js";
 import customerRoutes from "./modules/customer/customer.routes.js";
 import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
+import serviceRoutes from "./modules/service/service.routes.js";
+import cardRoutes from "./modules/card/card.routes.js";
 
 const app = express();
 
@@ -54,6 +56,8 @@ app.get("/", (req, res) => {
       employees: "/api/employees",
       customers: "/api/customers",
       dashboard: "/api/dashboard",
+      services: "/api/services",
+      cards: "/api/cards"
     },
   });
 });
@@ -75,6 +79,8 @@ app.use("/api/managers", managerRoutes);
 app.use("/api/employees", employeeRoutes);
 app.use("/api/customers", customerRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/services", serviceRoutes);
+app.use("/api/cards", cardRoutes);
 
 // 404 Not Found Handler
 app.use((req, res, next) => {

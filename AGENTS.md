@@ -6,7 +6,7 @@ Instructions, architecture guide, and operational rules for AI agents working in
 
 ## 📌 Project Overview
 
-**MetroGram** is a modular **Node.js / Express** backend application backed by **MongoDB & Mongoose**, managed with the **Bun** runtime and package manager. It implements a polymorphic, reference-based Role-Based Access Control (RBAC) architecture with hierarchical user management.
+**MetroGram** is a modular **Node.js / Express** backend application backed by **MongoDB & Mongoose**, managed with the **Bun** runtime and package manager. It implements a polymorphic, reference-based Role-Based Access Control (RBAC) architecture with hierarchical user management, alongside comprehensive modules for Diagnostic Medical Services (Lab Tests) and Membership Health Cards.
 
 ---
 
@@ -38,7 +38,7 @@ bun dev
 # Run production server
 bun start
 
-# Seed default Super Admin user (Boss)
+# Seed default Super Admin, Diagnostic Tests, Card Plans, & Sample Accounts
 bun run seed
 ```
 
@@ -65,7 +65,7 @@ src/modules/<domain>/
 
 When creating a new domain:
 1. Create all 4 files inside `src/modules/<domain>/`.
-2. Mount the routes in [`src/app.js`](file:///Users/anik/projects/cardbe/src/app.js) (`app.use('/api/<endpoint>', <domain>Routes)`).
+2. Mount the routes in `src/app.js` (`app.use('/api/<endpoint>', <domain>Routes)`).
 
 ### 3. Polymorphic Base User + Reference Profile Model
 The authentication and user identity system separates the core account from role-specific metadata:
@@ -87,17 +87,17 @@ The authentication and user identity system separates the core account from role
   - `SuperAdmin` (`src/modules/superAdmin/superAdmin.model.js`): `adminLevel`, `permissions`, `systemNotes`
   - `Manager` (`src/modules/manager/manager.model.js`): `department`, `branch`, `managedEmployees`, `maxTeamSize`
   - `Employee` (`src/modules/employee/employee.model.js`): `employeeCode`, `designation`, `department`, `manager`
-  - `Customer` (`src/modules/customer/customer.model.js`): `customerCode`, `membershipType`, `address`, `loyaltyPoints`
+  - `Customer` (`src/modules/customer/customer.model.js`): `customerCode`, `membershipType`, `aadharNumber`, `panNumber`, `hasCard`, `activeCard`, `cardHistory`, `address`, `loyaltyPoints`
 
 ### 4. RBAC & Role Hierarchy Rules
-Role permissions are defined in [`src/constants/roles.js`](file:///Users/anik/projects/cardbe/src/constants/roles.js):
+Role permissions are defined in `src/constants/roles.js`:
 
 | Role | Hierarchy Level | Allowed to Create & Manage | Prohibited From Managing |
 |---|---|---|---|
-| `SUPER_ADMIN` | Level 4 | `MANAGER`, `EMPLOYEE`, `CUSTOMER` | - |
-| `MANAGER` | Level 3 | `EMPLOYEE`, `CUSTOMER` | `SUPER_ADMIN`, `MANAGER` |
-| `EMPLOYEE` | Level 2 | `CUSTOMER` | `SUPER_ADMIN`, `MANAGER`, `EMPLOYEE` |
-| `CUSTOMER` | Level 1 | *None (Self Profile Only)* | All roles |
+| `SUPER_ADMIN` | Level 4 | `MANAGER`, `EMPLOYEE`, `CUSTOMER`, Services & Card Plans | - |
+| `MANAGER` | Level 3 | `EMPLOYEE`, `CUSTOMER`, Card Assignment | `SUPER_ADMIN`, `MANAGER`, Service & Card Plan Configuration |
+| `EMPLOYEE` | Level 2 | `CUSTOMER`, Card Assignment | `SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`, Service & Card Plan Configuration |
+| `CUSTOMER` | Level 1 | *None (Self Profile & Card Purchase Only)* | All roles |
 
 #### Middleware Usage:
 - `protect`: Verifies JWT from HTTP-Only cookie `req.cookies.token` (or `Authorization: Bearer <token>`), loads active user and populates their `profile` on `req.user`.
@@ -108,43 +108,64 @@ Role permissions are defined in [`src/constants/roles.js`](file:///Users/anik/pr
 
 ## 📡 Complete API Endpoints Map
 
-### 🔑 1. Auth Module (`/api/auth`)
+### 🩺 1. Medical Services / Diagnostic Tests (`/api/services`)
+- `GET /api/services` — List diagnostic tests with filters (`testType`, `search`, `requiresFasting`, `isActive`, `page`, `limit`) [Public for Landing Page].
+- `GET /api/services/categories` — Get unique test types/categories and sample types [Public].
+- `GET /api/services/:id` — View details of single diagnostic test [Public].
+- `POST /api/services` — Create new diagnostic test (`SUPER_ADMIN` only).
+- `PUT /api/services/:id` — Update diagnostic test (`SUPER_ADMIN` only).
+- `PATCH /api/services/:id/status` — Toggle test active/inactive status (`SUPER_ADMIN` only).
+- `DELETE /api/services/:id` — Delete diagnostic test (`SUPER_ADMIN` only).
+
+### 💳 2. Membership Health Cards (`/api/cards`)
+- `GET /api/cards/plans` — List active card plans (`MONTHLY`, `YEARLY`, `QUARTERLY`) [Public for Landing Page].
+- `GET /api/cards/plans/:id` — View single card plan [Public].
+- `POST /api/cards/plans` — Create new card plan (`SUPER_ADMIN` only).
+- `PUT /api/cards/plans/:id` — Update card plan (`SUPER_ADMIN` only).
+- `PATCH /api/cards/plans/:id/status` — Toggle card plan status (`SUPER_ADMIN` only).
+- `DELETE /api/cards/plans/:id` — Delete card plan (`SUPER_ADMIN` only).
+- `POST /api/cards/purchase` — Purchase card plan (Customer self-service).
+- `POST /api/cards/assign` — Assign card plan to customer (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
+- `GET /api/cards/my-card` — View logged-in customer's active card details and validity.
+- `GET /api/cards/customer/:userId` — View specific customer's card details (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
+
+### 🔑 3. Auth Module (`/api/auth`)
 - `POST /api/auth/login` — Public login for all roles (sets HTTP-Only cookie `token`).
 - `POST /api/auth/logout` — Logout user (clears HTTP-Only cookie `token`).
 - `GET /api/auth/me` — Get current logged-in user with populated profile.
 
-### 📊 2. Dashboard Module (`/api/dashboard`)
+### 📊 4. Dashboard Module (`/api/dashboard`)
 - `GET /api/dashboard/stats` — Role-based metrics, KPI stats, team capacity, and recent activity.
 
-### 🛡️ 3. Super Admin Module (`/api/super-admin`)
+### 🛡️ 5. Super Admin Module (`/api/super-admin`)
 - `GET /api/super-admin/profile` — Super Admin profile details (`SUPER_ADMIN` only).
 
-### 👔 4. Manager Module (`/api/managers`)
+### 👔 6. Manager Module (`/api/managers`)
 - `POST /api/managers` — Create manager user & profile (`SUPER_ADMIN` only).
 - `GET /api/managers` — List all managers (`SUPER_ADMIN`, `MANAGER`).
 - `GET /api/managers/:userId` — View manager profile (`SUPER_ADMIN`, `MANAGER`).
 - `PUT /api/managers/:userId` — Update manager user & profile (`SUPER_ADMIN` only).
 - `DELETE /api/managers/:userId` — Delete manager & profile (`SUPER_ADMIN` only).
 
-### 💼 5. Employee Module (`/api/employees`)
+### 💼 7. Employee Module (`/api/employees`)
 - `POST /api/employees` — Create employee user & profile (`SUPER_ADMIN`, `MANAGER`).
 - `GET /api/employees` — List all employees (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
 - `GET /api/employees/:userId` — View employee profile (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
 - `PUT /api/employees/:userId` — Update employee user & profile (`SUPER_ADMIN`, `MANAGER`).
 - `DELETE /api/employees/:userId` — Delete employee & profile (`SUPER_ADMIN`, `MANAGER`).
 
-### 🛍️ 6. Customer Module (`/api/customers`)
-- `POST /api/customers` — Create customer user & profile (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
+### 🛍️ 8. Customer Module (`/api/customers`)
+- `POST /api/customers` — Create customer with Aadhar & PAN (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
 - `GET /api/customers` — List all customers (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
 - `GET /api/customers/:userId` — View customer profile (All authenticated roles).
-- `PUT /api/customers/:userId` — Update customer user & profile (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
+- `PUT /api/customers/:userId` — Update customer with Aadhar & PAN (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
 - `DELETE /api/customers/:userId` — Delete customer & profile (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
 
-### 👥 7. Generic User Module (`/api/users`)
+### 👥 9. Generic User Module (`/api/users`)
 - `POST /api/users` — Generic creation (enforces role creation hierarchy).
 - `POST /api/users/manager` — Dedicated manager creation endpoint.
 - `POST /api/users/employee` — Dedicated employee creation endpoint.
-- `POST /api/users/customer` — Dedicated customer creation endpoint.
+- `POST /api/users/customer` — Dedicated customer creation endpoint with Aadhar & PAN.
 - `GET /api/users` — Query users (filtering by `role`, `search` query, and pagination `page`, `limit`).
 - `GET /api/users/:id` — Get single user by ID with populated profile.
 - `PUT /api/users/:id` — Update user and linked profile (enforces hierarchy permissions).
@@ -180,8 +201,11 @@ Role permissions are defined in [`src/constants/roles.js`](file:///Users/anik/pr
     │   ├── superAdmin/   # Super admin profile & operations
     │   ├── manager/      # Manager profiles & operations
     │   ├── employee/     # Employee profiles & operations
-    │   └── customer/     # Customer profiles & operations
+    │   ├── customer/     # Customer profiles & operations
+    │   ├── service/      # Diagnostic tests & lab services
+    │   └── card/         # Health card plans & customer subscriptions
     ├── seed/
+    │   ├── seedAll.js    # Comprehensive seed script
     │   └── seedSuperAdmin.js # Seed script for default super admin
     ├── app.js            # Express app configuration & route mounting
     └── server.js         # Server entry point & DB connection initialization

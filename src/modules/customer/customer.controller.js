@@ -11,13 +11,15 @@ class CustomerController {
         phoneNumber,
         customerCode,
         membershipType,
+        aadharNumber,
+        panNumber,
         address,
         loyaltyPoints
       } = req.body;
 
       const newCustomer = await customerService.createCustomer({
         userData: { firstName, lastName, email, password, phoneNumber },
-        profileData: { customerCode, membershipType, address, loyaltyPoints },
+        profileData: { customerCode, membershipType, aadharNumber, panNumber, address, loyaltyPoints },
         creatorId: req.user._id
       });
 
@@ -48,6 +50,8 @@ class CustomerController {
         isActive,
         customerCode,
         membershipType,
+        aadharNumber,
+        panNumber,
         address,
         loyaltyPoints
       } = req.body;
@@ -63,6 +67,8 @@ class CustomerController {
       const profileData = {};
       if (customerCode !== undefined) profileData.customerCode = customerCode;
       if (membershipType !== undefined) profileData.membershipType = membershipType;
+      if (aadharNumber !== undefined) profileData.aadharNumber = aadharNumber;
+      if (panNumber !== undefined) profileData.panNumber = panNumber ? panNumber.toUpperCase() : null;
       if (address !== undefined) profileData.address = address;
       if (loyaltyPoints !== undefined) profileData.loyaltyPoints = loyaltyPoints;
 

@@ -142,6 +142,8 @@ class UserController {
         phoneNumber,
         customerCode,
         membershipType,
+        aadharNumber,
+        panNumber,
         address,
         loyaltyPoints
       } = req.body;
@@ -149,7 +151,7 @@ class UserController {
       const newCustomer = await userService.createUserByRole({
         role: ROLES.CUSTOMER,
         userData: { firstName, lastName, email, password, phoneNumber },
-        profileData: { customerCode, membershipType, address, loyaltyPoints },
+        profileData: { customerCode, membershipType, aadharNumber, panNumber, address, loyaltyPoints },
         creatorId: req.user._id,
         creatorRole: req.user.role
       });
