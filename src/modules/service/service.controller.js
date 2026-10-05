@@ -209,6 +209,89 @@ class ServiceController {
       next(error);
     }
   }
+
+  /**
+   * Get current user's test bookings
+   */
+  async getMyBookings(req, res, next) {
+    try {
+      const result = await serviceService.getCustomerBookings(req.user._id, req.query);
+      res.status(200).json({
+        success: true,
+        count: result.bookings.length,
+        total: result.total,
+        totalPages: result.totalPages,
+        currentPage: result.currentPage,
+        limit: result.limit,
+        data: result.bookings
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * List all test bookings (Staff / Admin)
+   */
+  async getAllBookings(req, res, next) {
+    try {
+      const result = await serviceService.getAllBookings(req.query);
+      res.status(200).json({
+        success: true,
+        count: result.bookings.length,
+        total: result.total,
+        totalPages: result.totalPages,
+        currentPage: result.currentPage,
+        limit: result.limit,
+        data: result.bookings
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get single booking by ID
+   */
+  async getBookingById(req, res, next) {
+    try {
+      const booking = await serviceService.getBookingById(req.params.id, req.user);
+      res.status(200).json({
+        success: true,
+        data: booking
+      });
+    } catch (error) {
+      if (error.statusCode) {
+        return res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        });
+      }
+      next(error);
+    }
+  }
+
+  /**
+   * Update booking status and details (Staff)
+   */
+  async updateBookingStatus(req, res, next) {
+    try {
+      const booking = await serviceService.updateBookingStatus(req.params.id, req.body, req.user._id);
+      res.status(200).json({
+        success: true,
+        message: 'Booking status updated successfully',
+        data: booking
+      });
+    } catch (error) {
+      if (error.statusCode) {
+        return res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        });
+      }
+      next(error);
+    }
+  }
 }
 
 export default new ServiceController();

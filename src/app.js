@@ -13,6 +13,7 @@ import customerRoutes from "./modules/customer/customer.routes.js";
 import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
 import serviceRoutes from "./modules/service/service.routes.js";
 import cardRoutes from "./modules/card/card.routes.js";
+import paymentRoutes from "./modules/payment/payment.routes.js";
 
 const app = express();
 
@@ -37,11 +38,17 @@ app.use(
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "x-webhook-signature", "x-webhook-timestamp"]
   })
 );
 app.use(cookieParser());
-app.use(express.json());
+app.use(
+  express.json({
+    verify: (req, res, buf) => {
+      req.rawBody = buf.toString();
+    }
+  })
+);
 app.use(express.urlencoded({ extended: true }));
 
 // Welcome / API Documentation route
@@ -57,7 +64,8 @@ app.get("/", (req, res) => {
       customers: "/api/customers",
       dashboard: "/api/dashboard",
       services: "/api/services",
-      cards: "/api/cards"
+      cards: "/api/cards",
+      payments: "/api/payments"
     },
   });
 });
@@ -81,6 +89,7 @@ app.use("/api/customers", customerRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/services", serviceRoutes);
 app.use("/api/cards", cardRoutes);
+app.use("/api/payments", paymentRoutes);
 
 // 404 Not Found Handler
 app.use((req, res, next) => {

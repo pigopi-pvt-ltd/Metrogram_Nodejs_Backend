@@ -1,4 +1,6 @@
 import Service from './service.model.js';
+import ServiceBooking from './serviceBooking.model.js';
+import { ROLES } from '../../constants/roles.js';
 
 class ServiceService {
   /**
@@ -155,6 +157,127 @@ class ServiceService {
       testTypes: categories,
       sampleTypes
     };
+  }
+
+  /**
+   * Get all test bookings for a customer
+   */
+  async getCustomerBookings(userId, { page = 1, limit = 20, status } = {}) {
+    const filter = { customer: userId };
+    if (status) filter.bookingStatus = status;
+
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 20;
+    const skip = (pageNum - 1) * limitNum;
+
+    const [bookings, total] = await Promise.all([
+      ServiceBooking.find(filter)
+        .populate('service')
+        .populate('payment')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum),
+      ServiceBooking.countDocuments(filter)
+    ]);
+
+    return {
+      bookings,
+      total,
+      totalPages: Math.ceil(total / limitNum),
+      currentPage: pageNum,
+      limit: limitNum
+    };
+  }
+
+  /**
+   * Get all test bookings (Staff / Super Admin / Manager)
+   */
+  async getAllBookings({ page = 1, limit = 20, status, search } = {}) {
+    const filter = {};
+    if (status) filter.bookingStatus = status;
+
+    if (search) {
+      filter.$or = [
+        { bookingCode: { $regex: search, $options: 'i' } },
+        { 'patientDetails.name': { $regex: search, $options: 'i' } },
+        { 'patientDetails.phone': { $regex: search, $options: 'i' } },
+        { 'patientDetails.email': { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 20;
+    const skip = (pageNum - 1) * limitNum;
+
+    const [bookings, total] = await Promise.all([
+      ServiceBooking.find(filter)
+        .populate('customer', 'firstName lastName email phoneNumber')
+        .populate('service')
+        .populate('payment')
+        .populate('handledBy', 'firstName lastName email role')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum),
+      ServiceBooking.countDocuments(filter)
+    ]);
+
+    return {
+      bookings,
+      total,
+      totalPages: Math.ceil(total / limitNum),
+      currentPage: pageNum,
+      limit: limitNum
+    };
+  }
+
+  /**
+   * Get single booking by ID
+   */
+  async getBookingById(bookingId, requestingUser) {
+    const booking = await ServiceBooking.findById(bookingId)
+      .populate('customer', 'firstName lastName email phoneNumber')
+      .populate('service')
+      .populate('payment')
+      .populate('handledBy', 'firstName lastName email role');
+
+    if (!booking) {
+      const err = new Error('Booking not found');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    if (
+      requestingUser.role === ROLES.CUSTOMER &&
+      booking.customer._id.toString() !== requestingUser._id.toString()
+    ) {
+      const err = new Error('You are not authorized to view this booking');
+      err.statusCode = 403;
+      throw err;
+    }
+
+    return booking;
+  }
+
+  /**
+   * Update booking status and details (Staff)
+   */
+  async updateBookingStatus(bookingId, { bookingStatus, sampleCollectedAt, reportReadyAt, reportUrl, notes }, staffUserId) {
+    const booking = await ServiceBooking.findById(bookingId);
+    if (!booking) {
+      const err = new Error('Booking not found');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    if (bookingStatus) booking.bookingStatus = bookingStatus;
+    if (sampleCollectedAt) booking.sampleCollectedAt = new Date(sampleCollectedAt);
+    if (reportReadyAt) booking.reportReadyAt = new Date(reportReadyAt);
+    if (reportUrl !== undefined) booking.reportUrl = reportUrl;
+    if (notes !== undefined) booking.notes = notes;
+    booking.handledBy = staffUserId;
+
+    await booking.save();
+    return await this.getBookingById(booking._id, { role: ROLES.SUPER_ADMIN });
   }
 }
 

@@ -6,6 +6,22 @@ import { ROLES } from '../../constants/roles.js';
 
 const router = express.Router();
 
+// Service Bookings (Customer & Staff routes)
+router.get('/bookings/my-bookings', protect, serviceController.getMyBookings.bind(serviceController));
+router.get(
+  '/bookings',
+  protect,
+  authorize(ROLES.SUPER_ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE),
+  serviceController.getAllBookings.bind(serviceController)
+);
+router.get('/bookings/:id', protect, serviceController.getBookingById.bind(serviceController));
+router.patch(
+  '/bookings/:id/status',
+  protect,
+  authorize(ROLES.SUPER_ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE),
+  serviceController.updateBookingStatus.bind(serviceController)
+);
+
 // Public routes (accessible by everyone / landing page)
 router.get('/', serviceController.getAll.bind(serviceController));
 router.get('/categories', serviceController.getCategories.bind(serviceController));

@@ -124,44 +124,59 @@ Role permissions are defined in `src/constants/roles.js`:
 - `PUT /api/cards/plans/:id` — Update card plan (`SUPER_ADMIN` only).
 - `PATCH /api/cards/plans/:id/status` — Toggle card plan status (`SUPER_ADMIN` only).
 - `DELETE /api/cards/plans/:id` — Delete card plan (`SUPER_ADMIN` only).
-- `POST /api/cards/purchase` — Purchase card plan (Customer self-service).
+- `POST /api/cards/purchase` — Direct card assignment / mock purchase.
 - `POST /api/cards/assign` — Assign card plan to customer (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
 - `GET /api/cards/my-card` — View logged-in customer's active card details and validity.
 - `GET /api/cards/customer/:userId` — View specific customer's card details (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
 
-### 🔑 3. Auth Module (`/api/auth`)
+### 💰 3. Cashfree Payment Gateway & Transactions (`/api/payments`)
+- `GET /api/payments/config` — Get frontend Cashfree environment & API config (`SANDBOX` vs `PRODUCTION`).
+- `POST /api/payments/create-order` — Create payment order and Cashfree session for Health Card or Diagnostic Service (applies health card member discounts automatically).
+- `POST /api/payments/verify/:orderId` or `GET /api/payments/verify/:orderId` — Verify order with Cashfree and fulfill card subscription or diagnostic booking.
+- `POST /api/payments/webhook` — Public webhook listener for Cashfree signature-verified event notifications.
+- `GET /api/payments/order/:orderId` — View single payment transaction details.
+- `GET /api/payments/my-payments` — Customer's payment history with pagination.
+- `GET /api/payments` — Admin/Manager query all payment transactions with filters (`status`, `entityType`, date range, search).
+
+### 🩺 4. Diagnostic Service Bookings (`/api/services/bookings`)
+- `GET /api/services/bookings/my-bookings` — Customer view test bookings.
+- `GET /api/services/bookings` — Staff view all diagnostic test bookings (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
+- `GET /api/services/bookings/:id` — View single diagnostic test booking.
+- `PATCH /api/services/bookings/:id/status` — Update sample collection status, completion time, or report URL (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
+
+### 🔑 5. Auth Module (`/api/auth`)
 - `POST /api/auth/login` — Public login for all roles (sets HTTP-Only cookie `token`).
 - `POST /api/auth/logout` — Logout user (clears HTTP-Only cookie `token`).
 - `GET /api/auth/me` — Get current logged-in user with populated profile.
 
-### 📊 4. Dashboard Module (`/api/dashboard`)
-- `GET /api/dashboard/stats` — Role-based metrics, KPI stats, team capacity, and recent activity.
+### 📊 6. Dashboard Module (`/api/dashboard`)
+- `GET /api/dashboard/stats` — Role-based metrics, KPI stats, team capacity, revenue, and recent activity.
 
-### 🛡️ 5. Super Admin Module (`/api/super-admin`)
+### 🛡️ 7. Super Admin Module (`/api/super-admin`)
 - `GET /api/super-admin/profile` — Super Admin profile details (`SUPER_ADMIN` only).
 
-### 👔 6. Manager Module (`/api/managers`)
+### 👔 8. Manager Module (`/api/managers`)
 - `POST /api/managers` — Create manager user & profile (`SUPER_ADMIN` only).
 - `GET /api/managers` — List all managers (`SUPER_ADMIN`, `MANAGER`).
 - `GET /api/managers/:userId` — View manager profile (`SUPER_ADMIN`, `MANAGER`).
 - `PUT /api/managers/:userId` — Update manager user & profile (`SUPER_ADMIN` only).
 - `DELETE /api/managers/:userId` — Delete manager & profile (`SUPER_ADMIN` only).
 
-### 💼 7. Employee Module (`/api/employees`)
+### 💼 9. Employee Module (`/api/employees`)
 - `POST /api/employees` — Create employee user & profile (`SUPER_ADMIN`, `MANAGER`).
 - `GET /api/employees` — List all employees (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
 - `GET /api/employees/:userId` — View employee profile (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
 - `PUT /api/employees/:userId` — Update employee user & profile (`SUPER_ADMIN`, `MANAGER`).
 - `DELETE /api/employees/:userId` — Delete employee & profile (`SUPER_ADMIN`, `MANAGER`).
 
-### 🛍️ 8. Customer Module (`/api/customers`)
+### 🛍️ 10. Customer Module (`/api/customers`)
 - `POST /api/customers` — Create customer with Aadhar & PAN (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
 - `GET /api/customers` — List all customers (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
 - `GET /api/customers/:userId` — View customer profile (All authenticated roles).
 - `PUT /api/customers/:userId` — Update customer with Aadhar & PAN (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
 - `DELETE /api/customers/:userId` — Delete customer & profile (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
 
-### 👥 9. Generic User Module (`/api/users`)
+### 👥 11. Generic User Module (`/api/users`)
 - `POST /api/users` — Generic creation (enforces role creation hierarchy).
 - `POST /api/users/manager` — Dedicated manager creation endpoint.
 - `POST /api/users/employee` — Dedicated employee creation endpoint.

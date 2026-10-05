@@ -4,6 +4,8 @@ import Employee from '../employee/employee.model.js';
 import Customer from '../customer/customer.model.js';
 import Service from '../service/service.model.js';
 import CardPlan from '../card/cardPlan.model.js';
+import Payment from '../payment/payment.model.js';
+import ServiceBooking from '../service/serviceBooking.model.js';
 import { ROLES } from '../../constants/roles.js';
 
 class DashboardService {
@@ -23,7 +25,11 @@ class DashboardService {
         inactiveUsers,
         totalServices,
         totalCardPlans,
-        recentUsers
+        totalBookings,
+        paidPaymentsCount,
+        revenueAggregate,
+        recentUsers,
+        recentPayments
       ] = await Promise.all([
         User.countDocuments(),
         User.countDocuments({ role: ROLES.MANAGER }),
@@ -33,12 +39,25 @@ class DashboardService {
         User.countDocuments({ isActive: false }),
         Service.countDocuments(),
         CardPlan.countDocuments(),
+        ServiceBooking.countDocuments(),
+        Payment.countDocuments({ status: 'PAID' }),
+        Payment.aggregate([
+          { $match: { status: 'PAID' } },
+          { $group: { _id: null, totalRevenue: { $sum: '$amount' } } }
+        ]),
         User.find()
           .populate('profile')
           .populate('createdBy', 'firstName lastName email role')
           .sort({ createdAt: -1 })
+          .limit(5),
+        Payment.find()
+          .populate('user', 'firstName lastName email')
+          .populate('entityId')
+          .sort({ createdAt: -1 })
           .limit(5)
       ]);
+
+      const totalRevenue = revenueAggregate.length > 0 ? revenueAggregate[0].totalRevenue : 0;
 
       return {
         role: ROLES.SUPER_ADMIN,
@@ -50,9 +69,13 @@ class DashboardService {
           activeUsers,
           inactiveUsers,
           totalServices,
-          totalCardPlans
+          totalCardPlans,
+          totalBookings,
+          paidPaymentsCount,
+          totalRevenue
         },
-        recentActivity: recentUsers
+        recentActivity: recentUsers,
+        recentPayments
       };
     }
 
