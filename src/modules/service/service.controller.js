@@ -18,6 +18,8 @@ class ServiceController {
         requiresFasting,
         fastingDuration,
         preparationInstructions,
+        faqs,
+        faq,
         isActive
       } = req.body;
 
@@ -27,6 +29,16 @@ class ServiceController {
           message: 'Missing required fields: testName, description, testType, reportTime, sampleType, price, and discountedPrice are required'
         });
       }
+
+      const rawFaqs = faqs !== undefined ? faqs : (faq !== undefined ? faq : []);
+      const formattedFaqs = Array.isArray(rawFaqs)
+        ? rawFaqs
+            .filter((item) => item && typeof item === 'object' && (item.question || item.answer))
+            .map((item) => ({
+              question: item.question ? String(item.question).trim() : '',
+              answer: item.answer ? String(item.answer).trim() : ''
+            }))
+        : [];
 
       const service = await serviceService.createService(
         {
@@ -41,6 +53,7 @@ class ServiceController {
           requiresFasting: Boolean(requiresFasting),
           fastingDuration,
           preparationInstructions,
+          faqs: formattedFaqs,
           isActive: isActive !== undefined ? Boolean(isActive) : true
         },
         req.user._id
@@ -67,7 +80,23 @@ class ServiceController {
    */
   async update(req, res, next) {
     try {
-      const service = await serviceService.updateService(req.params.id, req.body);
+      const updateData = { ...req.body };
+
+      if (updateData.faq !== undefined && updateData.faqs === undefined) {
+        updateData.faqs = updateData.faq;
+        delete updateData.faq;
+      }
+
+      if (updateData.faqs !== undefined && Array.isArray(updateData.faqs)) {
+        updateData.faqs = updateData.faqs
+          .filter((item) => item && typeof item === 'object' && (item.question || item.answer))
+          .map((item) => ({
+            question: item.question ? String(item.question).trim() : '',
+            answer: item.answer ? String(item.answer).trim() : ''
+          }));
+      }
+
+      const service = await serviceService.updateService(req.params.id, updateData);
       res.status(200).json({
         success: true,
         message: 'Diagnostic test service updated successfully',

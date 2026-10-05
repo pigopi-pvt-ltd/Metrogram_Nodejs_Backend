@@ -95,6 +95,7 @@ src/
   - `parametersMeasured` (array of measured parameters: RBC, WBC, Platelets, etc.)
   - `requiresFasting` (Boolean) & `fastingDuration`
   - `preparationInstructions`
+  - `faqs` (array of FAQ objects: `[{ question, answer }]`)
   - `isActive`, `createdBy`
 
 - **Membership Cards & Plans (`modules/card/cardPlan.model.js`)**:

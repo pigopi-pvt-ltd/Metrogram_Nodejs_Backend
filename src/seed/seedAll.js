@@ -69,6 +69,16 @@ const seedAll = async () => {
         requiresFasting: false,
         fastingDuration: '',
         preparationInstructions: 'No special dietary preparation required.',
+        faqs: [
+          {
+            question: 'Is fasting required for a Complete Blood Count (CBC) test?',
+            answer: 'No, fasting is not required for a CBC test unless it is ordered alongside other tests that do require fasting.'
+          },
+          {
+            question: 'How quickly will I receive my CBC test report?',
+            answer: 'CBC reports are typically ready and sent within 24 hours of sample collection.'
+          }
+        ],
         isActive: true
       },
       {
@@ -90,6 +100,16 @@ const seedAll = async () => {
         requiresFasting: true,
         fastingDuration: '10-12 hours overnight fasting required',
         preparationInstructions: 'Water is permitted during the fasting window.',
+        faqs: [
+          {
+            question: 'Why is fasting required for a Lipid Profile?',
+            answer: 'Fasting helps establish an accurate baseline for triglycerides and LDL cholesterol, which fluctuate after meals.'
+          },
+          {
+            question: 'Can I drink water while fasting for this test?',
+            answer: 'Yes, drinking plain water is allowed and recommended to prevent dehydration.'
+          }
+        ],
         isActive: true
       },
       {
@@ -108,6 +128,12 @@ const seedAll = async () => {
         requiresFasting: true,
         fastingDuration: '8-10 hours fasting recommended (morning sample preferred)',
         preparationInstructions: 'Avoid biotin supplements 48 hours prior to test.',
+        faqs: [
+          {
+            question: 'What time of day is best for a thyroid test?',
+            answer: 'Morning sample collection is best as TSH levels follow a circadian rhythm.'
+          }
+        ],
         isActive: true
       },
       {
@@ -133,6 +159,12 @@ const seedAll = async () => {
         requiresFasting: false,
         fastingDuration: '',
         preparationInstructions: 'Avoid strenuous exercise and alcohol 24 hours prior to sampling.',
+        faqs: [
+          {
+            question: 'Should I stop my medications before taking an LFT?',
+            answer: 'Please consult your physician before pausing any prescribed medications prior to the test.'
+          }
+        ],
         isActive: true
       },
       {
@@ -150,6 +182,12 @@ const seedAll = async () => {
         requiresFasting: false,
         fastingDuration: '',
         preparationInstructions: 'Can be taken at any time with or without food.',
+        faqs: [
+          {
+            question: 'Does eating sugar the day before affect the HbA1c result?',
+            answer: 'No, HbA1c measures your average blood sugar over the preceding 2 to 3 months, so single-day food intake does not alter it.'
+          }
+        ],
         isActive: true
       },
       {
@@ -172,6 +210,12 @@ const seedAll = async () => {
         requiresFasting: false,
         fastingDuration: '',
         preparationInstructions: 'Mid-stream early morning clean-catch sample is recommended.',
+        faqs: [
+          {
+            question: 'What does "clean-catch mid-stream" urine mean?',
+            answer: 'It means you should let the first small stream of urine pass into the toilet, and then collect the middle portion into the sterile container.'
+          }
+        ],
         isActive: true
       }
     ];

@@ -57,6 +57,20 @@ const serviceSchema = new mongoose.Schema(
       trim: true,
       default: ''
     },
+    faqs: [
+      {
+        question: {
+          type: String,
+          required: [true, 'FAQ question is required'],
+          trim: true
+        },
+        answer: {
+          type: String,
+          required: [true, 'FAQ answer is required'],
+          trim: true
+        }
+      }
+    ],
     isActive: {
       type: Boolean,
       default: true,

@@ -116,7 +116,9 @@ class ServiceService {
         { description: { $regex: search, $options: 'i' } },
         { testType: { $regex: search, $options: 'i' } },
         { sampleType: { $regex: search, $options: 'i' } },
-        { parametersMeasured: { $elemMatch: { $regex: search, $options: 'i' } } }
+        { parametersMeasured: { $elemMatch: { $regex: search, $options: 'i' } } },
+        { 'faqs.question': { $regex: search, $options: 'i' } },
+        { 'faqs.answer': { $regex: search, $options: 'i' } }
       ];
     }
 
