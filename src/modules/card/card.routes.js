@@ -13,6 +13,16 @@ router.get('/plans/:id', cardController.getPlanById.bind(cardController));
 // Customer card purchase and my-card inspection (authenticated users)
 router.post('/purchase', protect, cardController.purchaseCard.bind(cardController));
 router.get('/my-card', protect, cardController.getMyCard.bind(cardController));
+router.get('/my-card/receipt', protect, (req, res, next) => {
+  import('../receipt/receipt.controller.js').then(m => m.default.downloadMyCardReceiptPdf(req, res, next)).catch(next);
+});
+// Explicit guard: Health cards cannot be cancelled or refunded
+router.all(['/my-card/cancel', '/cancel'], protect, (req, res) => {
+  return res.status(400).json({
+    success: false,
+    message: 'Health Card subscriptions are non-refundable and cannot be cancelled or refunded.'
+  });
+});
 
 // Staff assigning card or inspecting customer card
 router.post(

@@ -1,7 +1,7 @@
 import CardPlan from './cardPlan.model.js';
 import Customer from '../customer/customer.model.js';
 import User from '../user/user.model.js';
-import { ROLES } from '../../constants/roles.js';
+import { ROLES, PROFILE_MODELS } from '../../constants/roles.js';
 
 class CardService {
   /**
@@ -161,16 +161,39 @@ class CardService {
       throw err;
     }
 
-    const customerProfile = await Customer.findOne({ user: customerUserId });
+    let customerProfile = await Customer.findOne({ user: customerUserId });
     if (!customerProfile) {
-      const err = new Error('Customer profile not found');
-      err.statusCode = 404;
-      throw err;
+      customerProfile = new Customer({
+        user: customerUserId,
+        customerCode: `CUST-${Date.now().toString().slice(-6)}`
+      });
+      await customerProfile.save();
     }
 
     const plan = await CardPlan.findById(cardPlanId);
     if (!plan || !plan.isActive) {
       const err = new Error('Selected card plan is invalid or inactive');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // Check if customer already has an active card
+    if (customerProfile?.activeCard?.expiresAt && new Date() >= new Date(customerProfile.activeCard.expiresAt)) {
+      customerProfile.activeCard.status = 'EXPIRED';
+      customerProfile.hasCard = false;
+      await customerProfile.save();
+    }
+
+    const hasActiveCard =
+      customerProfile?.hasCard &&
+      customerProfile?.activeCard &&
+      ['ACTIVE', 'SUCCESS'].includes(customerProfile.activeCard.status) &&
+      (!customerProfile.activeCard.expiresAt || new Date() < new Date(customerProfile.activeCard.expiresAt));
+
+    if (hasActiveCard) {
+      const err = new Error(
+        'You already have an active Health Card membership. You cannot purchase a new card while your current pass is active.'
+      );
       err.statusCode = 400;
       throw err;
     }
@@ -207,6 +230,13 @@ class CardService {
 
     await customerProfile.save();
 
+    // Ensure User profile and profileModel are linked
+    if (!user.profile || user.profileModel !== PROFILE_MODELS.CUSTOMER) {
+      user.profile = customerProfile._id;
+      user.profileModel = PROFILE_MODELS.CUSTOMER;
+      await user.save();
+    }
+
     return {
       user: {
         _id: user._id,
@@ -232,11 +262,13 @@ class CardService {
       throw err;
     }
 
-    const customerProfile = await Customer.findOne({ user: targetCustomerUserId });
+    let customerProfile = await Customer.findOne({ user: targetCustomerUserId });
     if (!customerProfile) {
-      const err = new Error('Customer profile not found');
-      err.statusCode = 404;
-      throw err;
+      customerProfile = new Customer({
+        user: targetCustomerUserId,
+        customerCode: `CUST-${Date.now().toString().slice(-6)}`
+      });
+      await customerProfile.save();
     }
 
     const plan = await CardPlan.findById(cardPlanId);
@@ -275,6 +307,13 @@ class CardService {
     });
 
     await customerProfile.save();
+
+    // Ensure User profile and profileModel are linked
+    if (!user.profile || user.profileModel !== PROFILE_MODELS.CUSTOMER) {
+      user.profile = customerProfile._id;
+      user.profileModel = PROFILE_MODELS.CUSTOMER;
+      await user.save();
+    }
 
     return {
       user: {

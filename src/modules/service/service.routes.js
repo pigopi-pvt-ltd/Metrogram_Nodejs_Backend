@@ -15,6 +15,11 @@ router.get(
   serviceController.getAllBookings.bind(serviceController)
 );
 router.get('/bookings/:id', protect, serviceController.getBookingById.bind(serviceController));
+router.get('/bookings/:id/receipt', protect, (req, res, next) => {
+  req.params.bookingIdentifier = req.params.id;
+  import('../receipt/receipt.controller.js').then(m => m.default.downloadBookingReceiptPdf(req, res, next)).catch(next);
+});
+router.post('/bookings/:id/cancel', protect, serviceController.cancelBooking.bind(serviceController));
 router.patch(
   '/bookings/:id/status',
   protect,

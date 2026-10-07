@@ -136,13 +136,30 @@ Role permissions are defined in `src/constants/roles.js`:
 - `POST /api/payments/webhook` — Public webhook listener for Cashfree signature-verified event notifications.
 - `GET /api/payments/order/:orderId` — View single payment transaction details.
 - `GET /api/payments/my-payments` — Customer's payment history with pagination.
+- `POST /api/payments/refund/:orderId` — Initiate automated Cashfree refund for a paid order (`SUPER_ADMIN`, `MANAGER`). Blocks CARD entities.
+- `GET /api/payments/refunds/:orderId` — Fetch refund status and history from Cashfree.
 - `GET /api/payments` — Admin/Manager query all payment transactions with filters (`status`, `entityType`, date range, search).
 
 ### 🩺 4. Diagnostic Service Bookings (`/api/services/bookings`)
 - `GET /api/services/bookings/my-bookings` — Customer view test bookings.
 - `GET /api/services/bookings` — Staff view all diagnostic test bookings (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
 - `GET /api/services/bookings/:id` — View single diagnostic test booking.
+- `POST /api/services/bookings/:id/cancel` — Cancel test booking with automated Cashfree refund (checks sample status).
+- `GET /api/services/bookings/:id/receipt` — Download PDF receipt for diagnostic booking.
 - `PATCH /api/services/bookings/:id/status` — Update sample collection status, completion time, or report URL (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
+
+### 🧾 5. Invoices & Receipts (`/api/receipts`)
+- `GET /api/receipts/cards/my-card/pdf` — Download PDF receipt for logged-in customer's active health card.
+- `GET /api/receipts/cards/my-card` — Get JSON receipt data for logged-in customer's active health card.
+- `GET /api/receipts/cards/customer/:userId/pdf` — Staff download PDF receipt for a customer's health card (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
+- `GET /api/receipts/bookings/:bookingIdentifier/pdf` — Download PDF receipt for a service booking (by `bookingCode` or ID).
+- `GET /api/receipts/bookings/:bookingIdentifier` — Get JSON receipt data for a service booking.
+- `GET /api/receipts/payments/:paymentIdentifier/pdf` — Download PDF receipt for a payment transaction (by `orderId` or ID).
+- `GET /api/receipts/payments/:paymentIdentifier` — Get JSON receipt data for a payment transaction.
+- Also available as direct route shortcuts:
+  - `GET /api/cards/my-card/receipt`
+  - `GET /api/services/bookings/:id/receipt`
+  - `GET /api/payments/order/:orderId/receipt`
 
 ### 🔑 5. Auth Module (`/api/auth`)
 - `POST /api/auth/login` — Public login for all roles (sets HTTP-Only cookie `token`).

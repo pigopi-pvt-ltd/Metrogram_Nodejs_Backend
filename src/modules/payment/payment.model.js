@@ -53,7 +53,7 @@ const paymentSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['PENDING', 'PAID', 'FAILED', 'USER_DROPPED', 'CANCELLED', 'REFUNDED'],
+      enum: ['PENDING', 'PAID', 'FAILED', 'USER_DROPPED', 'CANCELLED', 'DISCARDED', 'REFUNDED'],
       default: 'PENDING',
       index: true
     },
@@ -131,15 +131,34 @@ const paymentSchema = new mongoose.Schema(
       },
       notes: { type: String, trim: true }
     },
+    refundDetails: {
+      refundId: { type: String, trim: true, default: null },
+      cfRefundId: { type: String, trim: true, default: null },
+      refundAmount: { type: Number, default: 0 },
+      refundStatus: {
+        type: String,
+        enum: ['PENDING', 'SUCCESS', 'FAILED', 'CANCELLED'],
+        default: null
+      },
+      refundArn: { type: String, default: null },
+      refundNote: { type: String, trim: true, default: null },
+      refundProcessedAt: { type: Date, default: null }
+    },
     rawWebhookData: {
       type: mongoose.Schema.Types.Mixed,
       default: null
     }
   },
   {
-    timestamps: true
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
   }
 );
+
+paymentSchema.virtual('paymentStatus').get(function () {
+  return this.status;
+});
 
 // Indexes for fast dashboard and user lookups
 paymentSchema.index({ user: 1, createdAt: -1 });

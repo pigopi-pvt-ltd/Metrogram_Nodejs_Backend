@@ -279,6 +279,90 @@ class ServiceService {
     await booking.save();
     return await this.getBookingById(booking._id, { role: ROLES.SUPER_ADMIN });
   }
+
+  /**
+   * Customer or Staff cancels a Diagnostic Service Booking with automated Cashfree Refund
+   */
+  async cancelBooking(bookingId, { reason = '' }, requestingUser) {
+    const booking = await ServiceBooking.findById(bookingId)
+      .populate('customer', 'firstName lastName email phoneNumber')
+      .populate('service')
+      .populate('payment');
+
+    if (!booking) {
+      const err = new Error('Booking not found');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    // Check authorization: Customer can only cancel their own booking
+    if (
+      requestingUser.role === ROLES.CUSTOMER &&
+      booking.customer._id.toString() !== requestingUser._id.toString()
+    ) {
+      const err = new Error('You are not authorized to cancel this booking');
+      err.statusCode = 403;
+      throw err;
+    }
+
+    // Booking cannot be cancelled if already cancelled or completed
+    if (booking.bookingStatus === 'CANCELLED') {
+      const err = new Error('This booking is already cancelled');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    if (booking.bookingStatus === 'COMPLETED') {
+      const err = new Error('Completed test bookings cannot be cancelled or refunded');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    if (booking.bookingStatus === 'SAMPLE_COLLECTED' || booking.bookingStatus === 'PROCESSING') {
+      const err = new Error(
+        'Sample has already been collected or is processing. The booking can no longer be cancelled.'
+      );
+      err.statusCode = 400;
+      throw err;
+    }
+
+    let refundResult = null;
+
+    // If payment was made and is PAID, trigger Cashfree refund
+    if (booking.payment && booking.payment.status === 'PAID') {
+      const paymentService = (await import('../payment/payment.service.js')).default;
+      try {
+        refundResult = await paymentService.refundPaymentOrder({
+          orderId: booking.payment.orderId,
+          refundAmount: booking.amountPaid,
+          refundNote: reason || 'Customer requested diagnostic booking cancellation',
+          requestingUser
+        });
+      } catch (refundError) {
+        console.error('❌ Automatic refund failed during booking cancellation:', refundError.message);
+        const err = new Error(`Cancellation failed during refund processing: ${refundError.message}`);
+        err.statusCode = refundError.statusCode || 500;
+        throw err;
+      }
+    } else {
+      // If booking was unpaid or not processed via online gateway
+      booking.bookingStatus = 'CANCELLED';
+      booking.paymentStatus = 'REFUNDED';
+      booking.cancelledAt = new Date();
+      booking.cancelledBy = requestingUser._id;
+      booking.cancellationReason = reason || 'Booking cancelled by user';
+      booking.refundStatus = 'NOT_APPLICABLE';
+      await booking.save();
+    }
+
+    return {
+      success: true,
+      message: 'Booking cancelled and refund processed successfully',
+      bookingCode: booking.bookingCode,
+      bookingStatus: 'CANCELLED',
+      refundDetails: refundResult
+    };
+  }
 }
 
 export default new ServiceService();

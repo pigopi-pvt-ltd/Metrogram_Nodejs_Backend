@@ -292,6 +292,31 @@ class ServiceController {
       next(error);
     }
   }
+
+  /**
+   * Cancel booking and trigger automated Cashfree refund
+   */
+  async cancelBooking(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { reason } = req.body;
+      const result = await serviceService.cancelBooking(id, { reason }, req.user);
+
+      res.status(200).json({
+        success: true,
+        message: result.message,
+        data: result
+      });
+    } catch (error) {
+      if (error.statusCode) {
+        return res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        });
+      }
+      next(error);
+    }
+  }
 }
 
 export default new ServiceController();

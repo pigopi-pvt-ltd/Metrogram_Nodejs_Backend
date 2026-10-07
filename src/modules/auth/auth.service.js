@@ -1,5 +1,8 @@
 import jwt from 'jsonwebtoken';
 import User from '../user/user.model.js';
+import Customer from '../customer/customer.model.js';
+import CardPlan from '../card/cardPlan.model.js';
+import { ROLES, PROFILE_MODELS } from '../../constants/roles.js';
 
 class AuthService {
   generateToken(id) {
@@ -38,6 +41,31 @@ class AuthService {
       throw err;
     }
 
+    // Handle role-specific profile population
+    if (user.role === ROLES.CUSTOMER) {
+      if (!user.profile) {
+        let customerProfile = await Customer.findOne({ user: user._id });
+        if (!customerProfile) {
+          customerProfile = new Customer({
+            user: user._id,
+            customerCode: `CUST-${Date.now().toString().slice(-6)}`
+          });
+          await customerProfile.save();
+        }
+        user.profile = customerProfile._id;
+        user.profileModel = PROFILE_MODELS.CUSTOMER;
+        await user.save();
+        await user.populate('profile');
+      }
+
+      if (user.profile) {
+        await user.populate({
+          path: 'profile.activeCard.cardPlan',
+          strictPopulate: false
+        });
+      }
+    }
+
     const token = this.generateToken(user._id);
     user.password = undefined;
 
@@ -45,9 +73,53 @@ class AuthService {
   }
 
   async getMe(userId) {
-    return await User.findById(userId)
+    let user = await User.findById(userId)
       .populate('profile')
       .populate('createdBy', 'firstName lastName email role');
+
+    if (!user) return null;
+
+    if (user.role === ROLES.CUSTOMER) {
+      let customerProfile = await Customer.findOne({ user: userId });
+
+      if (!customerProfile) {
+        customerProfile = new Customer({
+          user: userId,
+          customerCode: `CUST-${Date.now().toString().slice(-6)}`
+        });
+        await customerProfile.save();
+      }
+
+      // Check card expiration if card exists
+      if (customerProfile.activeCard && customerProfile.activeCard.expiresAt) {
+        if (new Date() > new Date(customerProfile.activeCard.expiresAt)) {
+          customerProfile.activeCard.status = 'EXPIRED';
+          customerProfile.hasCard = false;
+          await customerProfile.save();
+        }
+      }
+
+      // Ensure user.profile reference and profileModel are properly linked
+      if (!user.profile || String(user.profile._id) !== String(customerProfile._id) || user.profileModel !== PROFILE_MODELS.CUSTOMER) {
+        await User.findByIdAndUpdate(userId, {
+          profile: customerProfile._id,
+          profileModel: PROFILE_MODELS.CUSTOMER
+        });
+
+        user = await User.findById(userId)
+          .populate('profile')
+          .populate('createdBy', 'firstName lastName email role');
+      }
+
+      if (user.profile) {
+        await user.populate({
+          path: 'profile.activeCard.cardPlan',
+          strictPopulate: false
+        });
+      }
+    }
+
+    return user;
   }
 }
 

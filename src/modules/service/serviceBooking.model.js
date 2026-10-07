@@ -103,6 +103,34 @@ const serviceBookingSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       default: null
+    },
+    cancellationReason: {
+      type: String,
+      trim: true,
+      default: null
+    },
+    cancelledAt: {
+      type: Date,
+      default: null
+    },
+    cancelledBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null
+    },
+    refundId: {
+      type: String,
+      trim: true,
+      default: null
+    },
+    refundAmount: {
+      type: Number,
+      default: 0
+    },
+    refundStatus: {
+      type: String,
+      enum: ['PENDING', 'SUCCESS', 'FAILED', 'NOT_APPLICABLE', null],
+      default: null
     }
   },
   {

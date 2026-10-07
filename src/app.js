@@ -14,6 +14,7 @@ import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
 import serviceRoutes from "./modules/service/service.routes.js";
 import cardRoutes from "./modules/card/card.routes.js";
 import paymentRoutes from "./modules/payment/payment.routes.js";
+import receiptRoutes from "./modules/receipt/receipt.routes.js";
 
 const app = express();
 
@@ -65,7 +66,8 @@ app.get("/", (req, res) => {
       dashboard: "/api/dashboard",
       services: "/api/services",
       cards: "/api/cards",
-      payments: "/api/payments"
+      payments: "/api/payments",
+      receipts: "/api/receipts"
     },
   });
 });
@@ -90,6 +92,7 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/services", serviceRoutes);
 app.use("/api/cards", cardRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/receipts", receiptRoutes);
 
 // 404 Not Found Handler
 app.use((req, res, next) => {

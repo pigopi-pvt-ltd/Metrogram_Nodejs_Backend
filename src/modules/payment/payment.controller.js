@@ -1,4 +1,5 @@
 import paymentService from './payment.service.js';
+import Customer from '../customer/customer.model.js';
 
 class PaymentController {
   /**
@@ -76,10 +77,23 @@ class PaymentController {
 
       const payment = await paymentService.verifyAndFulfillPayment(orderId);
 
+      let activeCard = null;
+      if (payment.entityType === 'CARD') {
+        const userId = payment.user?._id || payment.user;
+        const customer = await Customer.findOne({ user: userId });
+        activeCard = customer?.activeCard || null;
+      }
+
+      const paymentObj = payment.toObject ? payment.toObject() : { ...payment };
+
       res.status(200).json({
         success: true,
         message: payment.status === 'PAID' ? 'Payment verified and benefits activated successfully' : `Payment status: ${payment.status}`,
-        data: payment
+        data: {
+          ...paymentObj,
+          paymentStatus: payment.status,
+          activeCard: activeCard || paymentObj.cardDetails
+        }
       });
     } catch (error) {
       if (error.statusCode) {
@@ -174,6 +188,99 @@ class PaymentController {
         data: result.payments
       });
     } catch (error) {
+      next(error);
+    }
+  }
+  /**
+   * Discard an unpaid or failed payment order
+   */
+  async discardOrder(req, res, next) {
+    try {
+      const { orderId } = req.params;
+      if (!orderId) {
+        return res.status(400).json({
+          success: false,
+          message: 'orderId parameter is required'
+        });
+      }
+
+      const payment = await paymentService.discardOrder(orderId, req.user);
+
+      res.status(200).json({
+        success: true,
+        message: 'Payment order has been discarded successfully',
+        data: {
+          ...payment.toObject(),
+          paymentStatus: payment.status
+        }
+      });
+    } catch (error) {
+      if (error.statusCode) {
+        return res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        });
+      }
+      next(error);
+    }
+  }
+
+  /**
+   * Process refund for a paid order (Super Admin & Manager or automated booking cancellation)
+   */
+  async refundOrder(req, res, next) {
+    try {
+      const { orderId } = req.params;
+      const { refundAmount, refundNote } = req.body;
+
+      if (!orderId) {
+        return res.status(400).json({
+          success: false,
+          message: 'orderId parameter is required'
+        });
+      }
+
+      const result = await paymentService.refundPaymentOrder({
+        orderId,
+        refundAmount,
+        refundNote,
+        requestingUser: req.user
+      });
+
+      res.status(200).json({
+        success: true,
+        message: result.message,
+        data: result
+      });
+    } catch (error) {
+      if (error.statusCode) {
+        return res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        });
+      }
+      next(error);
+    }
+  }
+
+  /**
+   * Get refund history and status for an order
+   */
+  async getOrderRefunds(req, res, next) {
+    try {
+      const { orderId } = req.params;
+      const result = await paymentService.getOrderRefunds(orderId);
+      res.status(200).json({
+        success: true,
+        data: result
+      });
+    } catch (error) {
+      if (error.statusCode) {
+        return res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        });
+      }
       next(error);
     }
   }

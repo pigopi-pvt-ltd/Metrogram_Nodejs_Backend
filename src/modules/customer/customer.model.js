@@ -50,7 +50,7 @@ const customerSchema = new mongoose.Schema(
       expiresAt: { type: Date, default: null },
       status: {
         type: String,
-        enum: ['ACTIVE', 'EXPIRED', 'CANCELLED', 'NONE'],
+        enum: ['ACTIVE', 'SUCCESS', 'EXPIRED', 'CANCELLED', 'NONE'],
         default: 'NONE'
       }
     },
