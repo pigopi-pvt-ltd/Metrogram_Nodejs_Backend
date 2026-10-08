@@ -3,6 +3,7 @@ import userController from './user.controller.js';
 import { protect } from '../../middleware/auth.js';
 import { authorize, verifyCanCreateRole } from '../../middleware/roleCheck.js';
 import { ROLES } from '../../constants/roles.js';
+import { uploadCustomerDocuments } from '../../middleware/upload.js';
 
 const router = express.Router();
 
@@ -23,10 +24,11 @@ router.post(
   userController.createEmployee.bind(userController)
 );
 
-// 3. Super Admin, Manager & Employee can add Customer
+// 3. Super Admin, Manager & Employee can add Customer (supports multipart/form-data for document uploads)
 router.post(
   '/customer',
   authorize(ROLES.SUPER_ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE),
+  uploadCustomerDocuments,
   userController.createCustomer.bind(userController)
 );
 

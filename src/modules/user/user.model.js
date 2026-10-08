@@ -61,6 +61,14 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true
     },
+    resetPasswordOtp: {
+      type: String,
+      select: false
+    },
+    resetPasswordExpires: {
+      type: Date,
+      select: false
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

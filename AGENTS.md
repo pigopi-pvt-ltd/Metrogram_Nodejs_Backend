@@ -162,9 +162,13 @@ Role permissions are defined in `src/constants/roles.js`:
   - `GET /api/payments/order/:orderId/receipt`
 
 ### 🔑 5. Auth Module (`/api/auth`)
+- `POST /api/auth/register` — Public customer self-registration with personal info, optional Aadhar & PAN details, and document uploads (`aadharImage`, `panImage`) stored in Cloudinary. Automatically creates customer profile and returns JWT + user. Accepts `multipart/form-data` or JSON.
 - `POST /api/auth/login` — Public login for all roles (sets HTTP-Only cookie `token`).
 - `POST /api/auth/logout` — Logout user (clears HTTP-Only cookie `token`).
 - `GET /api/auth/me` — Get current logged-in user with populated profile.
+- `POST /api/auth/change-password` — Change password for authenticated user (requires `currentPassword`, `newPassword`, optional `confirmPassword`).
+- `POST /api/auth/forgot-password` — Request 6-digit password reset OTP email (requires `email`).
+- `POST /api/auth/reset-password` — Verify reset OTP and set new password (requires `email`, `otp`, `newPassword`, optional `confirmPassword`).
 
 ### 📊 6. Dashboard Module (`/api/dashboard`)
 - `GET /api/dashboard/stats` — Role-based metrics, KPI stats, team capacity, revenue, and recent activity.
@@ -187,17 +191,17 @@ Role permissions are defined in `src/constants/roles.js`:
 - `DELETE /api/employees/:userId` — Delete employee & profile (`SUPER_ADMIN`, `MANAGER`).
 
 ### 🛍️ 10. Customer Module (`/api/customers`)
-- `POST /api/customers` — Create customer with Aadhar & PAN (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
+- `POST /api/customers` — Create customer with Aadhar & PAN details and optional document images (`aadharImage`, `panImage`) stored in Cloudinary (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`). Accepts `multipart/form-data` or JSON.
 - `GET /api/customers` — List all customers (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
 - `GET /api/customers/:userId` — View customer profile (All authenticated roles).
-- `PUT /api/customers/:userId` — Update customer with Aadhar & PAN (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
-- `DELETE /api/customers/:userId` — Delete customer & profile (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
+- `PUT /api/customers/:userId` — Update customer with Aadhar & PAN details and document images (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`, or the `CUSTOMER` updating their own profile). Accepts `multipart/form-data` or JSON.
+- `DELETE /api/customers/:userId` — Delete customer & profile and remove stored document images from Cloudinary (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
 
 ### 👥 11. Generic User Module (`/api/users`)
 - `POST /api/users` — Generic creation (enforces role creation hierarchy).
 - `POST /api/users/manager` — Dedicated manager creation endpoint.
 - `POST /api/users/employee` — Dedicated employee creation endpoint.
-- `POST /api/users/customer` — Dedicated customer creation endpoint with Aadhar & PAN.
+- `POST /api/users/customer` — Dedicated customer creation endpoint with Aadhar & PAN numbers and document images (`aadharImage`, `panImage`). Accepts `multipart/form-data` or JSON.
 - `GET /api/users` — Query users (filtering by `role`, `search` query, and pagination `page`, `limit`).
 - `GET /api/users/:id` — Get single user by ID with populated profile.
 - `PUT /api/users/:id` — Update user and linked profile (enforces hierarchy permissions).

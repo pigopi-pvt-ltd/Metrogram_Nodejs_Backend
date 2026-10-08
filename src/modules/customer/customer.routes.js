@@ -3,15 +3,17 @@ import customerController from './customer.controller.js';
 import { protect } from '../../middleware/auth.js';
 import { authorize } from '../../middleware/roleCheck.js';
 import { ROLES } from '../../constants/roles.js';
+import { uploadCustomerDocuments } from '../../middleware/upload.js';
 
 const router = express.Router();
 
 router.use(protect);
 
-// Super Admin, Manager, and Employee can create Customers
+// Super Admin, Manager, and Employee can create Customers (supports multipart/form-data for document uploads)
 router.post(
   '/',
   authorize(ROLES.SUPER_ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE),
+  uploadCustomerDocuments,
   customerController.create.bind(customerController)
 );
 
@@ -28,10 +30,11 @@ router.get(
   customerController.getProfile.bind(customerController)
 );
 
-// Super Admin, Manager, and Employee can update Customers
+// All authenticated roles (SUPER_ADMIN, MANAGER, EMPLOYEE, or the CUSTOMER themselves) can update
 router.put(
   '/:userId',
-  authorize(ROLES.SUPER_ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE),
+  authorize(ROLES.SUPER_ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE, ROLES.CUSTOMER),
+  uploadCustomerDocuments,
   customerController.update.bind(customerController)
 );
 

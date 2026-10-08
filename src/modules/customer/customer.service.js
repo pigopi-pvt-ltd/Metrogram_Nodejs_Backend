@@ -1,6 +1,7 @@
 import Customer from './customer.model.js';
 import User from '../user/user.model.js';
 import { ROLES, PROFILE_MODELS } from '../../constants/roles.js';
+import { deleteFromCloudinary } from '../../config/cloudinary.js';
 
 class CustomerService {
   /**
@@ -32,7 +33,11 @@ class CustomerService {
       customerCode: profileData.customerCode || `CUST-${Date.now()}`,
       membershipType: profileData.membershipType || 'REGULAR',
       aadharNumber: profileData.aadharNumber || null,
+      aadharImage: profileData.aadharImage || null,
+      aadharImagePublicId: profileData.aadharImagePublicId || null,
       panNumber: profileData.panNumber ? profileData.panNumber.toUpperCase() : null,
+      panImage: profileData.panImage || null,
+      panImagePublicId: profileData.panImagePublicId || null,
       address: profileData.address || {},
       loyaltyPoints: profileData.loyaltyPoints || 0
     });
@@ -51,12 +56,23 @@ class CustomerService {
    * Update Customer user and profile
    */
   async updateCustomer(userId, { userData = {}, profileData = {} }) {
-    const user = await User.findById(userId);
+    let user = await User.findById(userId);
+
+    // If not found by User ID, check if userId is the Customer profile's _id
+    if (!user) {
+      const customerDoc = await Customer.findById(userId);
+      if (customerDoc && customerDoc.user) {
+        user = await User.findById(customerDoc.user);
+      }
+    }
+
     if (!user || user.role !== ROLES.CUSTOMER) {
       const err = new Error('Customer not found');
       err.statusCode = 404;
       throw err;
     }
+
+    const targetUserId = user._id;
 
     if (userData.firstName) user.firstName = userData.firstName;
     if (userData.lastName) user.lastName = userData.lastName;
@@ -80,13 +96,13 @@ class CustomerService {
 
     if (Object.keys(profileData).length > 0) {
       await Customer.findOneAndUpdate(
-        { user: userId },
+        { user: targetUserId },
         { $set: profileData },
         { new: true, runValidators: true }
       );
     }
 
-    return await User.findById(userId)
+    return await User.findById(targetUserId)
       .populate('profile')
       .populate('createdBy', 'firstName lastName email role');
   }
@@ -102,7 +118,21 @@ class CustomerService {
       throw err;
     }
 
-    await Customer.findOneAndDelete({ user: userId });
+    const customerProfile = await Customer.findOne({ user: userId });
+    if (customerProfile) {
+      if (customerProfile.aadharImagePublicId) {
+        deleteFromCloudinary(customerProfile.aadharImagePublicId).catch(err => {
+          console.error('[Cloudinary] Failed to delete Aadhar document:', err.message);
+        });
+      }
+      if (customerProfile.panImagePublicId) {
+        deleteFromCloudinary(customerProfile.panImagePublicId).catch(err => {
+          console.error('[Cloudinary] Failed to delete PAN document:', err.message);
+        });
+      }
+      await Customer.findByIdAndDelete(customerProfile._id);
+    }
+
     await User.findByIdAndDelete(userId);
 
     return { success: true, message: 'Customer and associated profile deleted successfully' };

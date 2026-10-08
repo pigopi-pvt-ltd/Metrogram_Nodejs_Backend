@@ -1,7 +1,14 @@
 const errorHandler = (err, req, res, next) => {
-  console.error('Error:', err);
+  console.error('[Error Handler]', {
+    method: req.method,
+    url: req.originalUrl,
+    errorName: err.name,
+    errorMessage: err.message,
+    statusCode: err.statusCode || res.statusCode,
+    stack: err.stack
+  });
 
-  let statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  let statusCode = err.statusCode || (res.statusCode === 200 ? 500 : res.statusCode);
   let message = err.message || 'Internal Server Error';
 
   // Mongoose duplicate key error (code 11000)

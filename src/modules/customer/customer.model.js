@@ -25,11 +25,27 @@ const customerSchema = new mongoose.Schema(
       sparse: true,
       default: null
     },
+    aadharImage: {
+      type: String,
+      default: null
+    },
+    aadharImagePublicId: {
+      type: String,
+      default: null
+    },
     panNumber: {
       type: String,
       trim: true,
       uppercase: true,
       sparse: true,
+      default: null
+    },
+    panImage: {
+      type: String,
+      default: null
+    },
+    panImagePublicId: {
+      type: String,
       default: null
     },
     hasCard: {
