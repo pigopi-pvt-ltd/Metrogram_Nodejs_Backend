@@ -33,4 +33,12 @@ export const uploadCustomerDocuments = multer({
   { name: 'panImage', maxCount: 1 }
 ]);
 
+export const uploadTestReport = multer({
+  storage,
+  limits: {
+    fileSize: 15 * 1024 * 1024 // 15MB limit for PDF report
+  },
+  fileFilter
+}).single('report');
+
 export default uploadCustomerDocuments;

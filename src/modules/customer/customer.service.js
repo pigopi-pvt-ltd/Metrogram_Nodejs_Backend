@@ -1,5 +1,6 @@
 import Customer from './customer.model.js';
 import User from '../user/user.model.js';
+import ServiceBooking from '../service/serviceBooking.model.js';
 import { ROLES, PROFILE_MODELS } from '../../constants/roles.js';
 import { deleteFromCloudinary } from '../../config/cloudinary.js';
 
@@ -150,6 +151,49 @@ class CustomerService {
    */
   async getAllCustomers(queryFilter = {}) {
     return await Customer.find(queryFilter).populate('user');
+  }
+
+  /**
+   * Get all test bookings for a specific customer
+   * @param {string} userIdOrProfileId - Customer user ID or profile ID
+   * @param {Object} query - Pagination and filtering options
+   */
+  async getCustomerBookings(userIdOrProfileId, { page = 1, limit = 20, status } = {}) {
+    // Resolve user ID: if passed a customer profile ID, find linked user
+    let targetUserId = userIdOrProfileId;
+    const profile = await Customer.findById(userIdOrProfileId);
+    if (profile && profile.user) {
+      targetUserId = profile.user;
+    }
+
+    const filter = { customer: targetUserId };
+    if (status) filter.bookingStatus = status;
+
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 20;
+    const skip = (pageNum - 1) * limitNum;
+
+    const [bookings, total, customerUser] = await Promise.all([
+      ServiceBooking.find(filter)
+        .populate('customer', 'firstName lastName email phoneNumber')
+        .populate('service')
+        .populate('payment')
+        .populate('handledBy', 'firstName lastName email role')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum),
+      ServiceBooking.countDocuments(filter),
+      User.findById(targetUserId).select('firstName lastName email phoneNumber').populate('profile')
+    ]);
+
+    return {
+      customer: customerUser,
+      bookings,
+      total,
+      totalPages: Math.ceil(total / limitNum),
+      currentPage: pageNum,
+      limit: limitNum
+    };
   }
 }
 

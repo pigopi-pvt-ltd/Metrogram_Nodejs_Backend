@@ -2,6 +2,7 @@ import CardPlan from './cardPlan.model.js';
 import Customer from '../customer/customer.model.js';
 import User from '../user/user.model.js';
 import { ROLES, PROFILE_MODELS } from '../../constants/roles.js';
+import receiptService from '../receipt/receipt.service.js';
 
 class CardService {
   /**
@@ -237,6 +238,11 @@ class CardService {
       await user.save();
     }
 
+    // Send receipt email with PDF attachment asynchronously
+    receiptService.sendReceiptEmailForCard(customerUserId).catch((emailErr) => {
+      console.error(`[CardService] Background receipt email failed for customer ${customerUserId}:`, emailErr.message);
+    });
+
     return {
       user: {
         _id: user._id,
@@ -314,6 +320,11 @@ class CardService {
       user.profileModel = PROFILE_MODELS.CUSTOMER;
       await user.save();
     }
+
+    // Send receipt email with PDF attachment asynchronously
+    receiptService.sendReceiptEmailForCard(targetCustomerUserId).catch((emailErr) => {
+      console.error(`[CardService] Background receipt email failed for customer ${targetCustomerUserId}:`, emailErr.message);
+    });
 
     return {
       user: {

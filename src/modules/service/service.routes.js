@@ -4,6 +4,8 @@ import { protect } from '../../middleware/auth.js';
 import { authorize } from '../../middleware/roleCheck.js';
 import { ROLES } from '../../constants/roles.js';
 
+import { uploadTestReport } from '../../middleware/upload.js';
+
 const router = express.Router();
 
 // Service Bookings (Customer & Staff routes)
@@ -19,11 +21,19 @@ router.get('/bookings/:id/receipt', protect, (req, res, next) => {
   req.params.bookingIdentifier = req.params.id;
   import('../receipt/receipt.controller.js').then(m => m.default.downloadBookingReceiptPdf(req, res, next)).catch(next);
 });
+router.get('/bookings/:id/report', (req, res, next) => {
+  // If reportAccessToken is provided in query, bypass JWT protect
+  if (req.query.token) {
+    return serviceController.downloadReport(req, res, next);
+  }
+  return protect(req, res, () => serviceController.downloadReport(req, res, next));
+});
 router.post('/bookings/:id/cancel', protect, serviceController.cancelBooking.bind(serviceController));
 router.patch(
   '/bookings/:id/status',
   protect,
   authorize(ROLES.SUPER_ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE),
+  uploadTestReport,
   serviceController.updateBookingStatus.bind(serviceController)
 );
 

@@ -2,6 +2,7 @@ import Payment from '../payment/payment.model.js';
 import ServiceBooking from '../service/serviceBooking.model.js';
 import Customer from '../customer/customer.model.js';
 import receiptPdfService from './receipt.pdf.js';
+import emailService from '../../services/email.service.js';
 import { COMPANY_INFO } from '../../constants/companyInfo.js';
 import { ROLES } from '../../constants/roles.js';
 
@@ -272,6 +273,106 @@ class ReceiptService {
    */
   async generateReceiptPdf(receiptData) {
     return await receiptPdfService.generateReceiptBuffer(receiptData);
+  }
+
+  /**
+   * Send Receipt Email for a completed Payment record
+   * @param {string|Object} paymentIdOrPaymentDoc
+   */
+  async sendReceiptEmailForPayment(paymentIdOrPaymentDoc) {
+    try {
+      const paymentIdentifier = typeof paymentIdOrPaymentDoc === 'object' && paymentIdOrPaymentDoc?.orderId
+        ? paymentIdOrPaymentDoc.orderId
+        : String(paymentIdOrPaymentDoc);
+
+      const receiptData = await this.getReceiptDataByPayment(paymentIdentifier, null);
+      const recipientEmail = receiptData.customerEmail;
+
+      if (!recipientEmail) {
+        console.warn(`[ReceiptService] No recipient email found for payment ${paymentIdentifier}. Email not sent.`);
+        return { success: false, message: 'No recipient email found' };
+      }
+
+      const pdfBuffer = await this.generateReceiptPdf(receiptData);
+      const filename = `Receipt_${receiptData.receiptNumber || paymentIdentifier}.pdf`;
+
+      await emailService.sendReceiptEmail({
+        to: recipientEmail,
+        name: receiptData.customerName,
+        pdfBuffer,
+        filename,
+        receiptData
+      });
+
+      return { success: true, message: `Receipt email sent to ${recipientEmail}` };
+    } catch (err) {
+      console.error('[ReceiptService] Error sending receipt email for payment:', err.message);
+      return { success: false, error: err.message };
+    }
+  }
+
+  /**
+   * Send Receipt Email for a direct Card purchase or assignment
+   * @param {string} userId - Customer User ID
+   */
+  async sendReceiptEmailForCard(userId) {
+    try {
+      const receiptData = await this.getReceiptDataByCard(userId, { _id: userId, role: ROLES.SUPER_ADMIN });
+      const recipientEmail = receiptData.customerEmail;
+
+      if (!recipientEmail) {
+        console.warn(`[ReceiptService] No recipient email found for customer card ${userId}. Email not sent.`);
+        return { success: false, message: 'No recipient email found' };
+      }
+
+      const pdfBuffer = await this.generateReceiptPdf(receiptData);
+      const filename = `Receipt_${receiptData.receiptNumber || 'HealthCard'}.pdf`;
+
+      await emailService.sendReceiptEmail({
+        to: recipientEmail,
+        name: receiptData.customerName,
+        pdfBuffer,
+        filename,
+        receiptData
+      });
+
+      return { success: true, message: `Receipt email sent to ${recipientEmail}` };
+    } catch (err) {
+      console.error('[ReceiptService] Error sending receipt email for card:', err.message);
+      return { success: false, error: err.message };
+    }
+  }
+
+  /**
+   * Send Receipt Email for a Service Booking
+   * @param {string} bookingIdOrCode
+   */
+  async sendReceiptEmailForBooking(bookingIdOrCode) {
+    try {
+      const receiptData = await this.getReceiptDataByBooking(bookingIdOrCode, null);
+      const recipientEmail = receiptData.customerEmail;
+
+      if (!recipientEmail) {
+        console.warn(`[ReceiptService] No recipient email found for booking ${bookingIdOrCode}. Email not sent.`);
+        return { success: false, message: 'No recipient email found' };
+      }
+
+      const pdfBuffer = await this.generateReceiptPdf(receiptData);
+      const filename = `Receipt_${receiptData.receiptNumber || bookingIdOrCode}.pdf`;
+
+      await emailService.sendReceiptEmail({
+        to: recipientEmail,
+        name: receiptData.customerName,
+        pdfBuffer,
+        filename,
+        receiptData
+      });
+
+      return { success: true, message: `Receipt email sent to ${recipientEmail}` };
+    } catch (err) {
+      console.error('[ReceiptService] Error sending receipt email for booking:', err.message);
+      return { success: false, error: err.message };
+    }
   }
 }
 

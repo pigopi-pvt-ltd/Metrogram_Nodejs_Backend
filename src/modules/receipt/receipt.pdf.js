@@ -1,5 +1,12 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import PDFDocument from 'pdfkit';
 import { COMPANY_INFO } from '../../constants/companyInfo.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const LOGO_PATH = path.resolve(__dirname, '../../../public/logo-2.jpeg');
 
 class ReceiptPdfService {
   /**
@@ -77,16 +84,19 @@ class ReceiptPdfService {
     doc.rect(0, 0, pageWidth, 5).fill(primaryColor);
 
     // --- COMPANY HEADER (TOP SECTION) ---
-    let y = 25;
+    let y = 18;
 
-    // Company Legal Name & Brand
+    // Render Logo if file exists
+    if (fs.existsSync(LOGO_PATH)) {
+      // 1600x533 aspect ratio (~3:1), display at width 120, height 40
+      doc.image(LOGO_PATH, margin, y, { width: 120 });
+      y += 44;
+    }
+
+    // Company Name: Just "METROGRAM"
     doc.fontSize(15).font('Helvetica-Bold').fillColor(primaryColor);
     doc.text(COMPANY_INFO.legalName, margin, y, { lineBreak: false });
-    y += 18;
-
-    doc.fontSize(10.5).font('Helvetica-Bold').fillColor(brandColor);
-    doc.text(`Brand: ${COMPANY_INFO.brandName}`, margin, y, { lineBreak: false });
-    y += 15;
+    y += 16;
 
     // CIN Number
     doc.fontSize(8.5).font('Helvetica-Bold').fillColor(darkColor);
@@ -112,7 +122,7 @@ class ReceiptPdfService {
     doc.text(`STATUS: ${data.paymentStatus || 'PAID'}`, badgeX, badgeY + 26, { width: 150, align: 'center', lineBreak: false });
 
     // DIVIDER LINE
-    y += 18;
+    y += 16;
     doc.moveTo(margin, y).lineTo(pageWidth - margin, y).strokeColor(borderColor).lineWidth(1).stroke();
     y += 12;
 
@@ -321,16 +331,10 @@ class ReceiptPdfService {
       signY,
       { width: authWidth, align: 'right', lineBreak: false }
     );
-    doc.fontSize(7).font('Helvetica-Oblique').fillColor(mutedColor).text(
-      `(Brand: ${COMPANY_INFO.brandName})`,
-      authX,
-      signY + 11,
-      { width: authWidth, align: 'right', lineBreak: false }
-    );
     doc.fontSize(7.5).font('Helvetica-Bold').fillColor(primaryColor).text(
       'Authorized Signatory',
       authX,
-      signY + 38,
+      signY + 28,
       { width: authWidth, align: 'right', lineBreak: false }
     );
 
@@ -339,7 +343,7 @@ class ReceiptPdfService {
     doc.moveTo(margin, footerY - 5).lineTo(pageWidth - margin, footerY - 5).strokeColor(borderColor).lineWidth(0.5).stroke();
     doc.fontSize(7).font('Helvetica').fillColor(mutedColor);
     doc.text(
-      `${COMPANY_INFO.legalName} • Brand: ${COMPANY_INFO.brandName} • CIN: ${COMPANY_INFO.cin} • Helpline: ${COMPANY_INFO.contact} • Email: ${COMPANY_INFO.email}`,
+      `${COMPANY_INFO.legalName} • CIN: ${COMPANY_INFO.cin} • Helpline: ${COMPANY_INFO.contact} • Email: ${COMPANY_INFO.email}`,
       margin,
       footerY,
       { width: contentWidth, align: 'center', lineBreak: false }

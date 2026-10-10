@@ -1,6 +1,9 @@
+import crypto from 'crypto';
 import Service from './service.model.js';
 import ServiceBooking from './serviceBooking.model.js';
 import { ROLES } from '../../constants/roles.js';
+import emailService from '../../services/email.service.js';
+import { uploadBufferToCloudinary, deleteFromCloudinary } from '../../config/cloudinary.js';
 
 class ServiceService {
   /**
@@ -192,9 +195,13 @@ class ServiceService {
   /**
    * Get all test bookings (Staff / Super Admin / Manager)
    */
-  async getAllBookings({ page = 1, limit = 20, status, search } = {}) {
+  async getAllBookings({ page = 1, limit = 20, status, customer, search } = {}) {
     const filter = {};
     if (status) filter.bookingStatus = status;
+
+    if (customer) {
+      filter.customer = customer;
+    }
 
     if (search) {
       filter.$or = [
@@ -260,23 +267,101 @@ class ServiceService {
 
   /**
    * Update booking status and details (Staff)
+   * Supports file upload for test result report PDF
    */
-  async updateBookingStatus(bookingId, { bookingStatus, sampleCollectedAt, reportReadyAt, reportUrl, notes }, staffUserId) {
-    const booking = await ServiceBooking.findById(bookingId);
+  async updateBookingStatus(
+    bookingId,
+    { bookingStatus, sampleCollectedAt, reportReadyAt, reportUrl, notes },
+    staffUserId,
+    file = null
+  ) {
+    const booking = await ServiceBooking.findById(bookingId)
+      .populate('customer', 'firstName lastName email phoneNumber')
+      .populate('service');
+
     if (!booking) {
       const err = new Error('Booking not found');
       err.statusCode = 404;
       throw err;
     }
 
-    if (bookingStatus) booking.bookingStatus = bookingStatus;
+    if (bookingStatus) {
+      booking.bookingStatus = bookingStatus;
+      if (bookingStatus === 'SAMPLE_COLLECTED' && !booking.sampleCollectedAt) {
+        booking.sampleCollectedAt = new Date();
+      }
+      if (bookingStatus === 'COMPLETED' && !booking.reportReadyAt) {
+        booking.reportReadyAt = new Date();
+      }
+    }
+
     if (sampleCollectedAt) booking.sampleCollectedAt = new Date(sampleCollectedAt);
     if (reportReadyAt) booking.reportReadyAt = new Date(reportReadyAt);
-    if (reportUrl !== undefined) booking.reportUrl = reportUrl;
     if (notes !== undefined) booking.notes = notes;
     booking.handledBy = staffUserId;
 
+    // Handle Report PDF file upload (if uploaded via multipart form)
+    let uploadedFileBuffer = null;
+    let uploadedFilename = null;
+    if (file && file.buffer) {
+      uploadedFileBuffer = file.buffer;
+      uploadedFilename = file.originalname || `Report_${booking.bookingCode}.pdf`;
+
+      // If previous report exists in Cloudinary, clean it up
+      if (booking.reportPublicId) {
+        deleteFromCloudinary(booking.reportPublicId, { resource_type: 'raw' }).catch((err) => {
+          console.warn('[Cloudinary] Failed to delete old test report:', err.message);
+        });
+      }
+
+      const uploadResult = await uploadBufferToCloudinary(file.buffer, {
+        folder: 'metrogram/reports',
+        public_id: `report_${booking.bookingCode}_${Date.now()}`,
+        resource_type: 'raw' // Preserves PDF extension and formatting
+      });
+
+      booking.reportUrl = uploadResult.secure_url;
+      booking.reportPublicId = uploadResult.public_id;
+      if (!booking.reportReadyAt) {
+        booking.reportReadyAt = new Date();
+      }
+    } else if (reportUrl !== undefined) {
+      booking.reportUrl = reportUrl;
+    }
+
+    if (!booking.reportAccessToken) {
+      booking.reportAccessToken = crypto.randomBytes(24).toString('hex');
+    }
+
     await booking.save();
+
+    // If status is COMPLETED and reportUrl exists, send report email to customer
+    if (booking.bookingStatus === 'COMPLETED' && booking.reportUrl) {
+      const recipientEmail = booking.customer?.email || booking.patientDetails?.email;
+      const patientName = booking.patientDetails?.name || booking.customer?.firstName || 'Customer';
+      const testName = booking.service?.testName || 'Diagnostic Lab Test';
+
+      // Build verified direct PDF download URL using backend proxy
+      const hostUrl = process.env.BASE_URL || (process.env.PORT ? `http://localhost:${process.env.PORT}` : 'http://localhost:3000');
+      const directPdfDownloadUrl = `${hostUrl}/api/services/bookings/${booking._id}/report?token=${booking.reportAccessToken}`;
+
+      if (recipientEmail) {
+        emailService
+          .sendTestReportEmail({
+            to: recipientEmail,
+            name: patientName,
+            testName,
+            bookingCode: booking.bookingCode,
+            reportUrl: directPdfDownloadUrl,
+            pdfBuffer: uploadedFileBuffer,
+            filename: uploadedFilename
+          })
+          .catch((emailErr) => {
+            console.error(`[ServiceService] Failed to send report email for ${booking.bookingCode}:`, emailErr.message);
+          });
+      }
+    }
+
     return await this.getBookingById(booking._id, { role: ROLES.SUPER_ADMIN });
   }
 

@@ -1,3 +1,5 @@
+import https from 'https';
+import http from 'http';
 import serviceService from './service.service.js';
 
 class ServiceController {
@@ -273,10 +275,12 @@ class ServiceController {
 
   /**
    * Update booking status and details (Staff)
+   * Supports multipart/form-data for report PDF file upload or JSON body
    */
   async updateBookingStatus(req, res, next) {
     try {
-      const booking = await serviceService.updateBookingStatus(req.params.id, req.body, req.user._id);
+      const file = req.file || (req.files && req.files.report ? req.files.report[0] : null);
+      const booking = await serviceService.updateBookingStatus(req.params.id, req.body, req.user._id, file);
       res.status(200).json({
         success: true,
         message: 'Booking status updated successfully',
@@ -307,6 +311,92 @@ class ServiceController {
         message: result.message,
         data: result
       });
+    } catch (error) {
+      if (error.statusCode) {
+        return res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        });
+      }
+      next(error);
+    }
+  }
+
+  /**
+   * Download / View test result report
+   * Customer (own booking) or Staff, or direct verified email link via ?token=...
+   * Serves PDF stream directly with Content-Type: application/pdf so browser/Angular/email link views or saves as .pdf
+   */
+  async downloadReport(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { token } = req.query;
+
+      let booking;
+      if (token) {
+        // Direct link from email verified by unique reportAccessToken
+        const ServiceBooking = (await import('./serviceBooking.model.js')).default;
+        booking = await ServiceBooking.findOne({ _id: id, reportAccessToken: token });
+        if (!booking) {
+          return res.status(403).json({
+            success: false,
+            message: 'Invalid or expired report download link.'
+          });
+        }
+      } else {
+        // Authenticated user (req.user required)
+        if (!req.user) {
+          return res.status(401).json({
+            success: false,
+            message: 'Authentication required to access report.'
+          });
+        }
+        booking = await serviceService.getBookingById(id, req.user);
+      }
+
+      if (!booking || !booking.reportUrl) {
+        return res.status(404).json({
+          success: false,
+          message: 'Test report is not ready or has not been uploaded yet.'
+        });
+      }
+
+      const filename = `Test_Report_${booking.bookingCode}.pdf`;
+
+      // Return JSON metadata if explicitly requested
+      if (req.query.format === 'json') {
+        return res.status(200).json({
+          success: true,
+          bookingCode: booking.bookingCode,
+          reportUrl: booking.reportUrl,
+          downloadUrl: `/api/services/bookings/${booking._id}/report`,
+          filename
+        });
+      }
+
+      // Stream the file directly with explicit PDF Content-Type and filename
+      const client = booking.reportUrl.startsWith('https:') ? https : http;
+      client
+        .get(booking.reportUrl, (remoteRes) => {
+          if (remoteRes.statusCode >= 400) {
+            return res.status(remoteRes.statusCode).json({
+              success: false,
+              message: 'Failed to fetch report from cloud storage'
+            });
+          }
+
+          const disposition = req.query.download === 'true' ? 'attachment' : 'inline';
+          res.setHeader('Content-Type', 'application/pdf');
+          res.setHeader('Content-Disposition', `${disposition}; filename="${filename}"`);
+          if (remoteRes.headers['content-length']) {
+            res.setHeader('Content-Length', remoteRes.headers['content-length']);
+          }
+
+          remoteRes.pipe(res);
+        })
+        .on('error', (err) => {
+          next(err);
+        });
     } catch (error) {
       if (error.statusCode) {
         return res.status(error.statusCode).json({

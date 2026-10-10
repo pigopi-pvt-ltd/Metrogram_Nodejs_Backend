@@ -30,6 +30,13 @@ router.get(
   customerController.getProfile.bind(customerController)
 );
 
+// Super Admin, Manager, and Employee can view all bookings made by a specific customer
+router.get(
+  '/:userId/bookings',
+  authorize(ROLES.SUPER_ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE),
+  customerController.getCustomerBookings.bind(customerController)
+);
+
 // All authenticated roles (SUPER_ADMIN, MANAGER, EMPLOYEE, or the CUSTOMER themselves) can update
 router.put(
   '/:userId',

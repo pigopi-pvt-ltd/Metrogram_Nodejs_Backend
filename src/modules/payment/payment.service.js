@@ -7,6 +7,7 @@ import Customer from '../customer/customer.model.js';
 import User from '../user/user.model.js';
 import { getCashfreeClient, getCashfreeEnvironment } from '../../config/cashfree.js';
 import { ROLES, PROFILE_MODELS } from '../../constants/roles.js';
+import receiptService from '../receipt/receipt.service.js';
 
 class PaymentService {
   /**
@@ -420,6 +421,12 @@ class PaymentService {
     paymentDoc.fulfilledAt = new Date();
 
     await paymentDoc.save();
+
+    // Send receipt email asynchronously to the customer (does not block response)
+    receiptService.sendReceiptEmailForPayment(paymentDoc.orderId).catch((emailErr) => {
+      console.error(`[PaymentService] Background email sending failed for order ${paymentDoc.orderId}:`, emailErr.message);
+    });
+
     return paymentDoc;
   }
 

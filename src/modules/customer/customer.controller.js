@@ -255,6 +255,24 @@ class CustomerController {
       next(error);
     }
   }
+
+  async getCustomerBookings(req, res, next) {
+    try {
+      const result = await customerService.getCustomerBookings(req.params.userId, req.query);
+      res.status(200).json({
+        success: true,
+        customer: result.customer,
+        count: result.bookings.length,
+        total: result.total,
+        totalPages: result.totalPages,
+        currentPage: result.currentPage,
+        limit: result.limit,
+        data: result.bookings
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new CustomerController();

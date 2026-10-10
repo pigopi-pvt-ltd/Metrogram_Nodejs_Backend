@@ -94,6 +94,17 @@ const serviceBookingSchema = new mongoose.Schema(
       trim: true,
       default: null
     },
+    reportPublicId: {
+      type: String,
+      trim: true,
+      default: null
+    },
+    reportAccessToken: {
+      type: String,
+      trim: true,
+      default: null,
+      index: true
+    },
     notes: {
       type: String,
       trim: true,
