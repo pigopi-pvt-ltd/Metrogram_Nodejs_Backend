@@ -27,7 +27,9 @@ class PaymentController {
         entityId,
         bookingDetails,
         returnUrl,
-        notes
+        notes,
+        targetUserId,
+        customerUserId
       } = req.body;
 
       if (!entityType || !entityId) {
@@ -37,8 +39,25 @@ class PaymentController {
         });
       }
 
+      const targetId = targetUserId || customerUserId;
+      let effectiveUserId = req.user._id;
+      let assignedById = null;
+
+      if (targetId) {
+        if (!['SUPER_ADMIN', 'MANAGER', 'EMPLOYEE'].includes(req.user.role)) {
+          return res.status(403).json({
+            success: false,
+            message: 'Only staff can create payment orders for other customers'
+          });
+        }
+        effectiveUserId = targetId;
+        assignedById = req.user._id;
+      }
+
       const orderData = await paymentService.createPaymentOrder({
-        userId: req.user._id,
+        userId: effectiveUserId,
+        targetUserId: targetId,
+        assignedById,
         entityType: entityType.toUpperCase().trim(),
         entityId,
         bookingDetails,

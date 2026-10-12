@@ -34,6 +34,8 @@ class PaymentService {
    */
   async createPaymentOrder({
     userId,
+    targetUserId,
+    assignedById,
     entityType,
     entityId,
     bookingDetails = {},
@@ -46,19 +48,23 @@ class PaymentService {
       throw err;
     }
 
+    // Determine target customer user & staff assigner
+    const effectiveUserId = targetUserId || userId;
+    const staffAssignerId = targetUserId ? (assignedById || userId) : (assignedById || null);
+
     // 1. Fetch User and linked Customer Profile
-    const user = await User.findById(userId);
+    const user = await User.findById(effectiveUserId);
     if (!user) {
       const err = new Error('User not found');
       err.statusCode = 404;
       throw err;
     }
 
-    let customerProfile = await Customer.findOne({ user: userId });
+    let customerProfile = await Customer.findOne({ user: effectiveUserId });
     if (!customerProfile && user.role === ROLES.CUSTOMER) {
       // Auto-initialize customer profile if missing
       customerProfile = new Customer({
-        user: userId,
+        user: effectiveUserId,
         customerCode: `CUST-${Date.now().toString().slice(-6)}`
       });
       await customerProfile.save();
@@ -234,6 +240,7 @@ class PaymentService {
       entityModel,
       user: user._id,
       customer: customerProfile?._id || null,
+      assignedBy: staffAssignerId,
       amount: Number(amount.toFixed(2)),
       currency: 'INR',
       status: 'PENDING',
@@ -294,7 +301,8 @@ class PaymentService {
               price: plan.price,
               purchasedAt,
               expiresAt,
-              status: 'ACTIVE'
+              status: 'ACTIVE',
+              paymentMethod: paymentDoc.paymentMethod || 'ONLINE'
             };
             await customerProfile.save();
             await User.findByIdAndUpdate(userId, {
@@ -325,6 +333,7 @@ class PaymentService {
         const purchasedAt = new Date();
         const expiresAt = new Date(purchasedAt.getTime() + plan.validityInDays * 24 * 60 * 60 * 1000);
         const cardNumber = `MC-${plan.planType.substring(0, 3)}-${Date.now().toString().slice(-6)}`;
+        const effectivePaymentMethod = paymentDoc.paymentMethod || 'ONLINE';
 
         customerProfile.hasCard = true;
         customerProfile.activeCard = {
@@ -335,7 +344,8 @@ class PaymentService {
           price: plan.price,
           purchasedAt,
           expiresAt,
-          status: 'ACTIVE'
+          status: 'ACTIVE',
+          paymentMethod: effectivePaymentMethod
         };
 
         customerProfile.cardHistory.push({
@@ -346,7 +356,8 @@ class PaymentService {
           price: plan.price,
           purchasedAt,
           expiresAt,
-          assignedBy: userId,
+          assignedBy: paymentDoc.assignedBy || userId,
+          paymentMethod: effectivePaymentMethod,
           paymentStatus: 'COMPLETED'
         });
 

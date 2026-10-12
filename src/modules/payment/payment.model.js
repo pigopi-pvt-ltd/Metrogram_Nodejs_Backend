@@ -41,6 +41,11 @@ const paymentSchema = new mongoose.Schema(
       ref: 'Customer',
       default: null
     },
+    assignedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null
+    },
     amount: {
       type: Number,
       required: [true, 'Payment amount is required'],

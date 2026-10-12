@@ -39,6 +39,28 @@ router.get(
   cardController.getCustomerCard.bind(cardController)
 );
 
+// Super Admin & Manager: Card distribution and renewal tracking
+router.get(
+  ['/distributions/stats', '/distribution-stats'],
+  protect,
+  authorize(ROLES.SUPER_ADMIN, ROLES.MANAGER),
+  cardController.getDistributionStats.bind(cardController)
+);
+
+router.get(
+  ['/distributions/renewals', '/renewals'],
+  protect,
+  authorize(ROLES.SUPER_ADMIN, ROLES.MANAGER),
+  cardController.getUpcomingRenewals.bind(cardController)
+);
+
+router.get(
+  ['/distributions', '/distributed'],
+  protect,
+  authorize(ROLES.SUPER_ADMIN, ROLES.MANAGER),
+  cardController.getDistributedCards.bind(cardController)
+);
+
 // Super Admin plan management (Create, Update, Delete, Toggle Status)
 router.post(
   '/plans',

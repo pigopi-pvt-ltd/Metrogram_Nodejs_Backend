@@ -28,6 +28,8 @@ class DashboardService {
         totalBookings,
         paidPaymentsCount,
         revenueAggregate,
+        totalDistributedCards,
+        activeCardsCount,
         recentUsers,
         recentPayments
       ] = await Promise.all([
@@ -45,6 +47,12 @@ class DashboardService {
           { $match: { status: 'PAID' } },
           { $group: { _id: null, totalRevenue: { $sum: '$amount' } } }
         ]),
+        Customer.countDocuments({ 'activeCard.cardNumber': { $ne: null } }),
+        Customer.countDocuments({
+          'activeCard.cardNumber': { $ne: null },
+          'activeCard.expiresAt': { $gte: new Date() },
+          'activeCard.status': { $in: ['ACTIVE', 'SUCCESS'] }
+        }),
         User.find()
           .populate('profile')
           .populate('createdBy', 'firstName lastName email role')
@@ -70,6 +78,8 @@ class DashboardService {
           inactiveUsers,
           totalServices,
           totalCardPlans,
+          totalDistributedCards,
+          activeCardsCount,
           totalBookings,
           paidPaymentsCount,
           totalRevenue
@@ -86,6 +96,8 @@ class DashboardService {
       const [
         totalDepartmentEmployees,
         totalCustomers,
+        totalDistributedCards,
+        activeCardsCount,
         activeEmployees,
         recentEmployees,
         recentCustomers
@@ -97,6 +109,12 @@ class DashboardService {
           ]
         }),
         Customer.countDocuments(),
+        Customer.countDocuments({ 'activeCard.cardNumber': { $ne: null } }),
+        Customer.countDocuments({
+          'activeCard.cardNumber': { $ne: null },
+          'activeCard.expiresAt': { $gte: new Date() },
+          'activeCard.status': { $in: ['ACTIVE', 'SUCCESS'] }
+        }),
         User.countDocuments({ role: ROLES.EMPLOYEE, isActive: true }),
         User.find({ role: ROLES.EMPLOYEE })
           .populate('profile')
@@ -119,6 +137,8 @@ class DashboardService {
         summary: {
           totalDepartmentEmployees,
           totalCustomers,
+          totalDistributedCards,
+          activeCardsCount,
           activeEmployees
         },
         recentEmployees,

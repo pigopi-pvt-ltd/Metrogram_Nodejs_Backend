@@ -68,6 +68,10 @@ const customerSchema = new mongoose.Schema(
         type: String,
         enum: ['ACTIVE', 'SUCCESS', 'EXPIRED', 'CANCELLED', 'NONE'],
         default: 'NONE'
+      },
+      paymentMethod: {
+        type: String,
+        default: 'ONLINE'
       }
     },
     cardHistory: [
@@ -85,6 +89,10 @@ const customerSchema = new mongoose.Schema(
         assignedBy: {
           type: mongoose.Schema.Types.ObjectId,
           ref: 'User'
+        },
+        paymentMethod: {
+          type: String,
+          default: 'ONLINE'
         },
         paymentStatus: {
           type: String,
@@ -108,6 +116,13 @@ const customerSchema = new mongoose.Schema(
     timestamps: true
   }
 );
+
+// Indexes for card distribution and renewal tracking
+customerSchema.index({ 'activeCard.cardNumber': 1 });
+customerSchema.index({ 'activeCard.purchasedAt': -1 });
+customerSchema.index({ 'activeCard.expiresAt': 1 });
+customerSchema.index({ 'activeCard.status': 1 });
+customerSchema.index({ hasCard: 1 });
 
 const Customer = mongoose.model('Customer', customerSchema);
 

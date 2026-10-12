@@ -125,9 +125,12 @@ Role permissions are defined in `src/constants/roles.js`:
 - `PATCH /api/cards/plans/:id/status` — Toggle card plan status (`SUPER_ADMIN` only).
 - `DELETE /api/cards/plans/:id` — Delete card plan (`SUPER_ADMIN` only).
 - `POST /api/cards/purchase` — Direct card assignment / mock purchase.
-- `POST /api/cards/assign` — Assign card plan to customer (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
+- `POST /api/cards/assign` — Assign card plan to customer face-to-face (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`). Accepts `paymentMethod` (`CASH` for instant offline assignment without payment gateway; or `ONLINE` / `UPI` / `CARD` to generate a Cashfree payment session for the card price).
 - `GET /api/cards/my-card` — View logged-in customer's active card details and validity.
 - `GET /api/cards/customer/:userId` — View specific customer's card details (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
+- `GET /api/cards/distributions` (or `/api/cards/distributed`) — View all cards distributed among customers with distribution dates, renewal dates, days remaining, renewal status, customer info, and filters (`status`, `search`, `planType`, `planId`, `distributedFrom`, `distributedTo`, `renewalFrom`, `renewalTo`, `expiringWithinDays`, `page`, `limit`) (`SUPER_ADMIN`, `MANAGER`).
+- `GET /api/cards/distributions/stats` (or `/api/cards/distribution-stats`) — Comprehensive metrics on card distribution and renewals: total distributed, active, expired, renewal window buckets (overdue, today, 7d, 15d, 30d, 60d), plan breakdowns, timeline, recent distributions, and upcoming renewals (`SUPER_ADMIN`, `MANAGER`).
+- `GET /api/cards/distributions/renewals` (or `/api/cards/renewals`) — Targeted upcoming and overdue renewals list for renewal outreach and customer follow-up (`days`, `status`, `search`, `page`, `limit`) (`SUPER_ADMIN`, `MANAGER`).
 
 ### 💰 3. Cashfree Payment Gateway & Transactions (`/api/payments`)
 - `GET /api/payments/config` — Get frontend Cashfree environment & API config (`SANDBOX` vs `PRODUCTION`).
