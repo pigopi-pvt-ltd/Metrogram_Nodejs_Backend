@@ -103,13 +103,19 @@ class UserController {
         employeeCode,
         designation,
         department,
-        manager
+        manager,
+        managerId
       } = req.body;
 
       const newEmployee = await userService.createUserByRole({
         role: ROLES.EMPLOYEE,
         userData: { firstName, lastName, email, password, phoneNumber },
-        profileData: { employeeCode, designation, department, manager },
+        profileData: {
+          employeeCode,
+          designation,
+          department,
+          manager: manager || managerId
+        },
         creatorId: req.user._id,
         creatorRole: req.user.role
       });
@@ -250,7 +256,8 @@ class UserController {
         userData,
         profileData,
         updaterRole: req.user.role,
-        updaterId: req.user._id
+        updaterId: req.user._id,
+        updaterUser: req.user
       });
 
       res.status(200).json({
@@ -276,7 +283,8 @@ class UserController {
     try {
       const result = await userService.deleteUser(req.params.id, {
         deleterRole: req.user.role,
-        deleterId: req.user._id
+        deleterId: req.user._id,
+        deleterUser: req.user
       });
 
       res.status(200).json(result);
@@ -300,7 +308,8 @@ class UserController {
       const user = await userService.toggleStatus(req.params.id, {
         isActive,
         updaterRole: req.user.role,
-        updaterId: req.user._id
+        updaterId: req.user._id,
+        updaterUser: req.user
       });
 
       res.status(200).json({
@@ -324,8 +333,11 @@ class UserController {
    */
   async getAllUsers(req, res, next) {
     try {
-      const { role, search, page, limit } = req.query;
-      const result = await userService.getAllUsers({ role, search, page, limit });
+      const { role, search, managerId, manager, page, limit } = req.query;
+      const result = await userService.getAllUsers(
+        { role, search, managerId: managerId || manager, page, limit },
+        req.user
+      );
 
       res.status(200).json({
         success: true,

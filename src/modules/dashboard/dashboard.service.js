@@ -93,8 +93,11 @@ class DashboardService {
       const managerProfile = await Manager.findOne({ user: user._id });
       const managedEmployeeIds = managerProfile?.managedEmployees || [];
 
+      const managedEmployees = await Employee.find({ manager: managerProfile?._id });
+      const managedEmployeeUserIds = managedEmployees.map(e => e.user);
+
       const [
-        totalDepartmentEmployees,
+        totalManagedEmployees,
         totalCustomers,
         totalDistributedCards,
         activeCardsCount,
@@ -102,12 +105,7 @@ class DashboardService {
         recentEmployees,
         recentCustomers
       ] = await Promise.all([
-        Employee.countDocuments({
-          $or: [
-            { manager: managerProfile?._id },
-            { department: managerProfile?.department }
-          ]
-        }),
+        Employee.countDocuments({ manager: managerProfile?._id }),
         Customer.countDocuments(),
         Customer.countDocuments({ 'activeCard.cardNumber': { $ne: null } }),
         Customer.countDocuments({
@@ -115,8 +113,8 @@ class DashboardService {
           'activeCard.expiresAt': { $gte: new Date() },
           'activeCard.status': { $in: ['ACTIVE', 'SUCCESS'] }
         }),
-        User.countDocuments({ role: ROLES.EMPLOYEE, isActive: true }),
-        User.find({ role: ROLES.EMPLOYEE })
+        User.countDocuments({ _id: { $in: managedEmployeeUserIds }, isActive: true }),
+        User.find({ _id: { $in: managedEmployeeUserIds } })
           .populate('profile')
           .sort({ createdAt: -1 })
           .limit(5),
@@ -135,7 +133,7 @@ class DashboardService {
           maxTeamSize: managerProfile?.maxTeamSize
         },
         summary: {
-          totalDepartmentEmployees,
+          totalDepartmentEmployees: totalManagedEmployees,
           totalCustomers,
           totalDistributedCards,
           activeCardsCount,

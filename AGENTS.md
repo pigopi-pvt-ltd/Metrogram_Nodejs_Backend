@@ -104,6 +104,17 @@ Role permissions are defined in `src/constants/roles.js`:
 - `authorize(...roles)`: Restricts route access to specific roles.
 - `verifyCanCreateRole`: Enforces role creation permissions when creating new accounts.
 
+#### Manager Recruitment Limits & Team Isolation Rules:
+1. **Manager Creation (`maxTeamSize`)**: When creating a Manager, Super Admin specifies how many employees the manager can recruit (`maxTeamSize`, positive integer).
+2. **Employee Registration under Manager**:
+   - **Super Admin creating Employee**: `manager` (or `managerId`) is **mandatory**. Super Admin must select which active manager the employee belongs to. The selected manager's `maxTeamSize` is strictly enforced.
+   - **Manager creating Employee**: The employee is **automatically assigned** to the logged-in manager (`req.user._id`). The manager's `maxTeamSize` limit is enforced (returns 400 error if capacity is reached).
+3. **Team Isolation & Scoped Management**:
+   - **Listing (`GET /api/employees`)**: A Manager **only sees employees in their own managed team**. Super Admin sees all employees (and can filter by `?manager=<id>`).
+   - **Viewing, Updating, Deleting (`GET/PUT/DELETE /api/employees/:userId`)**: A Manager **cannot view, update, toggle status, or delete employees outside their managed team** (returns 403 Forbidden).
+   - **Manager Reassignment**: Only Super Admin can transfer an employee to a different manager (with capacity check on the target manager). Managers cannot reassign employees.
+   - **Dashboard**: A Manager's dashboard strictly displays metrics for their own team.
+
 ---
 
 ## 📡 Complete API Endpoints Map
@@ -164,7 +175,23 @@ Role permissions are defined in `src/constants/roles.js`:
   - `GET /api/services/bookings/:id/receipt`
   - `GET /api/payments/order/:orderId/receipt`
 
-### 🔑 5. Auth Module (`/api/auth`)
+### 💼 6. Careers & Job Openings (`/api/careers` or `/api/jobs`)
+- `GET /api/careers/jobs` — List active job openings with filters (`department`, `jobType`, `workplaceType`, `location`, `search`, `page`, `limit`) [Public for Career Page].
+- `GET /api/careers/jobs/departments` — Get distinct departments, job types, and workplace types for frontend filters [Public].
+- `GET /api/careers/jobs/:id` — View details of a single job opening [Public].
+- `POST /api/careers/jobs/:id/apply` or `POST /api/careers/apply` — Apply for a job opening with candidate details and resume file upload (`resume`) stored in Cloudinary [Public]. Accepts `multipart/form-data` or JSON with `resumeUrl`.
+- `GET /api/careers/admin/jobs` — List all jobs including draft, closed, and inactive postings with application metrics (`SUPER_ADMIN` only).
+- `POST /api/careers/jobs` — Create a new job opening with responsibilities, requirements, salary, and openings (`SUPER_ADMIN` only).
+- `PUT /api/careers/jobs/:id` — Update job opening details (`SUPER_ADMIN` only).
+- `PATCH /api/careers/jobs/:id/status` — Toggle job status (`OPEN`, `CLOSED`, `DRAFT`) or `isActive` (`SUPER_ADMIN` only).
+- `DELETE /api/careers/jobs/:id` — Delete job opening (`SUPER_ADMIN` only).
+- `GET /api/careers/applications` — List candidate job applications with filters (`jobId`, `status`, `search`, `page`, `limit`) (`SUPER_ADMIN` only).
+- `GET /api/careers/applications/stats` — Recruitment KPI metrics: total jobs, active jobs, applications count, and status breakdown (`SUPER_ADMIN` only).
+- `GET /api/careers/applications/:id` — View single applicant details, contact info, qualifications, and resume (`SUPER_ADMIN` only).
+- `PATCH /api/careers/applications/:id/status` — Update application hiring status (`APPLIED`, `IN_REVIEW`, `SHORTLISTED`, `REJECTED`, `HIRED`) and recruiter notes (`SUPER_ADMIN` only).
+- `DELETE /api/careers/applications/:id` — Delete application and clean up resume file from Cloudinary (`SUPER_ADMIN` only).
+
+### 🔑 7. Auth Module (`/api/auth`)
 - `POST /api/auth/register` — Public customer self-registration with personal info, optional Aadhar & PAN details, and document uploads (`aadharImage`, `panImage`) stored in Cloudinary. Automatically creates customer profile and returns JWT + user. Accepts `multipart/form-data` or JSON.
 - `POST /api/auth/login` — Public login for all roles (sets HTTP-Only cookie `token`).
 - `POST /api/auth/logout` — Logout user (clears HTTP-Only cookie `token`).
@@ -173,34 +200,34 @@ Role permissions are defined in `src/constants/roles.js`:
 - `POST /api/auth/forgot-password` — Request 6-digit password reset OTP email (requires `email`).
 - `POST /api/auth/reset-password` — Verify reset OTP and set new password (requires `email`, `otp`, `newPassword`, optional `confirmPassword`).
 
-### 📊 6. Dashboard Module (`/api/dashboard`)
+### 📊 8. Dashboard Module (`/api/dashboard`)
 - `GET /api/dashboard/stats` — Role-based metrics, KPI stats, team capacity, revenue, and recent activity.
 
-### 🛡️ 7. Super Admin Module (`/api/super-admin`)
+### 🛡️ 9. Super Admin Module (`/api/super-admin`)
 - `GET /api/super-admin/profile` — Super Admin profile details (`SUPER_ADMIN` only).
 
-### 👔 8. Manager Module (`/api/managers`)
+### 👔 10. Manager Module (`/api/managers`)
 - `POST /api/managers` — Create manager user & profile (`SUPER_ADMIN` only).
 - `GET /api/managers` — List all managers (`SUPER_ADMIN`, `MANAGER`).
 - `GET /api/managers/:userId` — View manager profile (`SUPER_ADMIN`, `MANAGER`).
 - `PUT /api/managers/:userId` — Update manager user & profile (`SUPER_ADMIN` only).
 - `DELETE /api/managers/:userId` — Delete manager & profile (`SUPER_ADMIN` only).
 
-### 💼 9. Employee Module (`/api/employees`)
+### 💼 11. Employee Module (`/api/employees`)
 - `POST /api/employees` — Create employee user & profile (`SUPER_ADMIN`, `MANAGER`).
 - `GET /api/employees` — List all employees (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
 - `GET /api/employees/:userId` — View employee profile (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
 - `PUT /api/employees/:userId` — Update employee user & profile (`SUPER_ADMIN`, `MANAGER`).
 - `DELETE /api/employees/:userId` — Delete employee & profile (`SUPER_ADMIN`, `MANAGER`).
 
-### 🛍️ 10. Customer Module (`/api/customers`)
+### 🛍️ 12. Customer Module (`/api/customers`)
 - `POST /api/customers` — Create customer with Aadhar & PAN details and optional document images (`aadharImage`, `panImage`) stored in Cloudinary (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`). Accepts `multipart/form-data` or JSON.
 - `GET /api/customers` — List all customers (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
 - `GET /api/customers/:userId` — View customer profile (All authenticated roles).
 - `PUT /api/customers/:userId` — Update customer with Aadhar & PAN details and document images (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`, or the `CUSTOMER` updating their own profile). Accepts `multipart/form-data` or JSON.
 - `DELETE /api/customers/:userId` — Delete customer & profile and remove stored document images from Cloudinary (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
 
-### 👥 11. Generic User Module (`/api/users`)
+### 👥 13. Generic User Module (`/api/users`)
 - `POST /api/users` — Generic creation (enforces role creation hierarchy).
 - `POST /api/users/manager` — Dedicated manager creation endpoint.
 - `POST /api/users/employee` — Dedicated employee creation endpoint.
@@ -242,7 +269,10 @@ Role permissions are defined in `src/constants/roles.js`:
     │   ├── employee/     # Employee profiles & operations
     │   ├── customer/     # Customer profiles & operations
     │   ├── service/      # Diagnostic tests & lab services
-    │   └── card/         # Health card plans & customer subscriptions
+    │   ├── card/         # Health card plans & customer subscriptions
+    │   ├── payment/      # Cashfree payment gateway & transactions
+    │   ├── receipt/      # PDF receipts & email invoices
+    │   └── career/       # Job openings & applicant resume submissions
     ├── seed/
     │   ├── seedAll.js    # Comprehensive seed script
     │   └── seedSuperAdmin.js # Seed script for default super admin

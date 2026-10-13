@@ -41,4 +41,31 @@ export const uploadTestReport = multer({
   fileFilter
 }).single('report');
 
+const resumeFileFilter = (req, file, cb) => {
+  const allowedMimeTypes = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'image/jpeg',
+    'image/jpg',
+    'image/png'
+  ];
+
+  if (allowedMimeTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    const error = new Error('Invalid file type for resume. Allowed formats: PDF, DOC, DOCX, and images (JPG, PNG).');
+    error.statusCode = 400;
+    cb(error, false);
+  }
+};
+
+export const uploadResume = multer({
+  storage,
+  limits: {
+    fileSize: 15 * 1024 * 1024 // 15MB limit for resume
+  },
+  fileFilter: resumeFileFilter
+}).single('resume');
+
 export default uploadCustomerDocuments;

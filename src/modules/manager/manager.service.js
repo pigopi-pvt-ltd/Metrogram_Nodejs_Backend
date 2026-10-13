@@ -6,13 +6,25 @@ import { ROLES, PROFILE_MODELS } from '../../constants/roles.js';
 class ManagerService {
   /**
    * Create a Manager user and profile
+   * Super Admin specifies maxTeamSize (how many employees this manager can recruit)
    */
-  async createManager({ userData, profileData, creatorId }) {
+  async createManager({ userData, profileData = {}, creatorId }) {
     const existing = await User.findOne({ email: userData.email.toLowerCase() });
     if (existing) {
       const err = new Error('A user with this email address already exists');
       err.statusCode = 400;
       throw err;
+    }
+
+    let maxTeamSize = 20;
+    if (profileData.maxTeamSize !== undefined) {
+      const parsedSize = parseInt(profileData.maxTeamSize, 10);
+      if (isNaN(parsedSize) || parsedSize < 1) {
+        const err = new Error('maxTeamSize must be a positive integer (at least 1)');
+        err.statusCode = 400;
+        throw err;
+      }
+      maxTeamSize = parsedSize;
     }
 
     const user = new User({
@@ -32,7 +44,8 @@ class ManagerService {
       user: user._id,
       department: profileData.department || 'General Management',
       branch: profileData.branch || 'Headquarters',
-      maxTeamSize: profileData.maxTeamSize || 20
+      maxTeamSize,
+      managedEmployees: []
     });
 
     await managerProfile.save();
@@ -47,6 +60,7 @@ class ManagerService {
 
   /**
    * Update Manager user and profile
+   * Allows Super Admin to update maxTeamSize with team capacity protection
    */
   async updateManager(userId, { userData = {}, profileData = {} }) {
     const user = await User.findById(userId);
@@ -77,6 +91,26 @@ class ManagerService {
     await user.save();
 
     if (Object.keys(profileData).length > 0) {
+      if (profileData.maxTeamSize !== undefined) {
+        const parsedSize = parseInt(profileData.maxTeamSize, 10);
+        if (isNaN(parsedSize) || parsedSize < 1) {
+          const err = new Error('maxTeamSize must be a positive integer (at least 1)');
+          err.statusCode = 400;
+          throw err;
+        }
+
+        const currentProfile = await Manager.findOne({ user: userId });
+        const currentCount = currentProfile?.managedEmployees?.length || 0;
+        if (parsedSize < currentCount) {
+          const err = new Error(
+            `Cannot reduce maxTeamSize to ${parsedSize} because this manager already has ${currentCount} employees assigned.`
+          );
+          err.statusCode = 400;
+          throw err;
+        }
+        profileData.maxTeamSize = parsedSize;
+      }
+
       await Manager.findOneAndUpdate(
         { user: userId },
         { $set: profileData },
@@ -85,7 +119,13 @@ class ManagerService {
     }
 
     return await User.findById(userId)
-      .populate('profile')
+      .populate({
+        path: 'profile',
+        populate: {
+          path: 'managedEmployees',
+          populate: { path: 'user', select: 'firstName lastName email phoneNumber isActive role' }
+        }
+      })
       .populate('createdBy', 'firstName lastName email role');
   }
 
@@ -117,14 +157,23 @@ class ManagerService {
   async getProfileByUserId(userId) {
     return await Manager.findOne({ user: userId })
       .populate('user')
-      .populate('managedEmployees');
+      .populate({
+        path: 'managedEmployees',
+        populate: { path: 'user', select: 'firstName lastName email phoneNumber isActive role' }
+      });
   }
 
   /**
    * List all manager profiles
    */
   async getAllManagers() {
-    return await Manager.find().populate('user').populate('managedEmployees');
+    return await Manager.find()
+      .populate('user')
+      .populate({
+        path: 'managedEmployees',
+        populate: { path: 'user', select: 'firstName lastName email phoneNumber isActive role' }
+      })
+      .sort({ createdAt: -1 });
   }
 }
 

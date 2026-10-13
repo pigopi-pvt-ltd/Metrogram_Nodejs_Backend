@@ -15,6 +15,7 @@ import serviceRoutes from "./modules/service/service.routes.js";
 import cardRoutes from "./modules/card/card.routes.js";
 import paymentRoutes from "./modules/payment/payment.routes.js";
 import receiptRoutes from "./modules/receipt/receipt.routes.js";
+import careerRoutes from "./modules/career/career.routes.js";
 
 const app = express();
 
@@ -67,7 +68,9 @@ app.get("/", (req, res) => {
       services: "/api/services",
       cards: "/api/cards",
       payments: "/api/payments",
-      receipts: "/api/receipts"
+      receipts: "/api/receipts",
+      careers: "/api/careers",
+      jobs: "/api/jobs"
     },
   });
 });
@@ -93,6 +96,8 @@ app.use("/api/services", serviceRoutes);
 app.use("/api/cards", cardRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/receipts", receiptRoutes);
+app.use("/api/careers", careerRoutes);
+app.use("/api/jobs", careerRoutes);
 
 // 404 Not Found Handler
 app.use((req, res, next) => {

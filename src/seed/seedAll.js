@@ -10,6 +10,7 @@ import Service from '../modules/service/service.model.js';
 import cardService from '../modules/card/card.service.js';
 import CardPlan from '../modules/card/cardPlan.model.js';
 import User from '../modules/user/user.model.js';
+import Job from '../modules/career/job.model.js';
 import { ROLES } from '../constants/roles.js';
 
 const seedAll = async () => {
@@ -506,6 +507,141 @@ const seedAll = async () => {
         }
       } else {
         console.log(`   ℹ️ Customer already exists: ${existingCustomer.email}`);
+      }
+    }
+
+    // 7. Seed Career Job Openings (Super Admin Configured)
+    console.log('\n7️⃣ Seeding Career Job Openings...');
+    const sampleJobs = [
+      {
+        title: 'Senior Consultant Pathologist',
+        department: 'Pathology & Diagnostics',
+        location: 'Patna, Bihar',
+        jobType: 'FULL_TIME',
+        workplaceType: 'ON_SITE',
+        experienceLevel: '3-5 Years',
+        education: 'MD / DNB in Pathology',
+        salary: {
+          min: 80000,
+          max: 120000,
+          currency: 'INR',
+          period: 'PER_MONTH',
+          isDisclosed: true,
+          displayText: '₹80,000 - ₹1,20,000 / month'
+        },
+        description: 'We are seeking an experienced and dedicated Consultant Pathologist to oversee diagnostic lab reporting, hematology, biochemistry, and clinical pathology tests at MetroGram Patna facility.',
+        responsibilities: [
+          'Verify and authorize clinical pathology, hematology, and biochemistry test reports',
+          'Ensure strict adherence to quality control protocols (NABL standards)',
+          'Provide consultation and guidance to medical staff and patients regarding lab findings',
+          'Lead and supervise the laboratory technical staff'
+        ],
+        requirements: [
+          'MD / DNB in Pathology from a recognized medical institute',
+          'Valid Medical Council registration',
+          'Minimum 3 years of post-qualification clinical experience in a diagnostic setup',
+          'Sound knowledge of automated analyzers and NABL accreditation guidelines'
+        ],
+        benefits: [
+          'Competitive compensation package with performance incentives',
+          'Health Card membership for family',
+          'Flexible work hours and continuous CME support'
+        ],
+        skills: ['Clinical Pathology', 'Hematology', 'Biochemistry', 'Quality Control', 'Report Validation'],
+        openings: 2,
+        status: 'OPEN',
+        isActive: true,
+        createdBy: superAdmin._id
+      },
+      {
+        title: 'Medical Laboratory Technician (MLT / DMLT)',
+        department: 'Diagnostics',
+        location: 'Patna, Bihar',
+        jobType: 'FULL_TIME',
+        workplaceType: 'ON_SITE',
+        experienceLevel: '1-3 Years',
+        education: 'B.Sc MLT or DMLT',
+        salary: {
+          min: 18000,
+          max: 28000,
+          currency: 'INR',
+          period: 'PER_MONTH',
+          isDisclosed: true,
+          displayText: '₹18,000 - ₹28,000 / month'
+        },
+        description: 'Join our central diagnostics facility as a Lab Technician to operate automated analyzers, perform diagnostic testing, sample processing, and maintain high testing precision.',
+        responsibilities: [
+          'Perform routine and specialized diagnostic lab tests in hematology, serology, and biochemistry',
+          'Calibrate, maintain, and troubleshoot lab equipment and analyzers daily',
+          'Maintain meticulous documentation and test logs in compliance with lab protocols',
+          'Manage inventory and reagent stock levels'
+        ],
+        requirements: [
+          'Diploma (DMLT) or Bachelor degree (B.Sc MLT) in Medical Laboratory Technology',
+          '1-3 years of proven hands-on laboratory experience',
+          'Familiarity with fully automated analyzers (e.g. Sysmex, Roche, Beckman)',
+          'Attention to detail and patient confidentiality'
+        ],
+        benefits: [
+          'Annual performance bonuses',
+          'Free annual health checkup packages',
+          'Skill development and technical certifications'
+        ],
+        skills: ['Sample Analysis', 'Analyzer Operation', 'Hematology', 'Serology', 'Biochemistry'],
+        openings: 4,
+        status: 'OPEN',
+        isActive: true,
+        createdBy: superAdmin._id
+      },
+      {
+        title: 'Phlebotomist / Home Sample Collector',
+        department: 'Field Operations',
+        location: 'Patna & Surrounding Districts',
+        jobType: 'FULL_TIME',
+        workplaceType: 'ON_SITE',
+        experienceLevel: '0-2 Years (Freshers Welcome)',
+        education: 'DMLT / Medical Assistant / Certified Phlebotomy Course',
+        salary: {
+          min: 15000,
+          max: 22000,
+          currency: 'INR',
+          period: 'PER_MONTH',
+          isDisclosed: true,
+          displayText: '₹15,000 - ₹22,000 / month + Fuel Allowance'
+        },
+        description: 'MetroGram is expanding doorstep home sample collection services. We are looking for polite, reliable, and skilled Phlebotomists to collect diagnostic samples from patient homes across Patna.',
+        responsibilities: [
+          'Visit patient homes on scheduled time slots for safe and painless blood / urine sample collection',
+          'Verify patient identification, test requirements, and fasting status',
+          'Maintain cold-chain integrity and transport samples promptly to the central processing lab',
+          'Deliver an empathetic and courteous customer experience'
+        ],
+        requirements: [
+          'Certified Phlebotomist, DMLT, or Nursing Assistant',
+          'Strong blood collection skills with minimal patient discomfort',
+          'Two-wheeler with valid driving license',
+          'Smartphone proficiency for operating the collection app'
+        ],
+        benefits: [
+          'Attractive fuel allowance & per-visit incentive scheme',
+          'MetroGram uniform and premium collection kit provided',
+          'Health insurance coverage'
+        ],
+        skills: ['Phlebotomy', 'Blood Collection', 'Patient Handling', 'Cold Chain Management', 'Customer Service'],
+        openings: 6,
+        status: 'OPEN',
+        isActive: true,
+        createdBy: superAdmin._id
+      }
+    ];
+
+    for (const jobData of sampleJobs) {
+      const existing = await Job.findOne({ title: jobData.title });
+      if (!existing) {
+        await Job.create(jobData);
+        console.log(`   ✅ Job Opening created: '${jobData.title}' (${jobData.department})`);
+      } else {
+        console.log(`   ℹ️ Job Opening already exists: '${existing.title}'`);
       }
     }
 

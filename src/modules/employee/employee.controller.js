@@ -12,12 +12,18 @@ class EmployeeController {
         employeeCode,
         designation,
         department,
-        manager
+        manager,
+        managerId
       } = req.body;
 
       const newEmployee = await employeeService.createEmployee({
         userData: { firstName, lastName, email, password, phoneNumber },
-        profileData: { employeeCode, designation, department, manager },
+        profileData: {
+          employeeCode,
+          designation,
+          department,
+          manager: manager || managerId
+        },
         creatorId: req.user._id,
         creatorRole: req.user.role
       });
@@ -50,7 +56,8 @@ class EmployeeController {
         employeeCode,
         designation,
         department,
-        manager
+        manager,
+        managerId
       } = req.body;
 
       const userData = {};
@@ -65,12 +72,18 @@ class EmployeeController {
       if (employeeCode !== undefined) profileData.employeeCode = employeeCode;
       if (designation !== undefined) profileData.designation = designation;
       if (department !== undefined) profileData.department = department;
-      if (manager !== undefined) profileData.manager = manager;
+      if (manager !== undefined || managerId !== undefined) {
+        profileData.manager = manager || managerId;
+      }
 
-      const updated = await employeeService.updateEmployee(req.params.userId, {
-        userData,
-        profileData
-      });
+      const updated = await employeeService.updateEmployee(
+        req.params.userId,
+        {
+          userData,
+          profileData
+        },
+        req.user
+      );
 
       res.status(200).json({
         success: true,
@@ -90,7 +103,7 @@ class EmployeeController {
 
   async delete(req, res, next) {
     try {
-      const result = await employeeService.deleteEmployee(req.params.userId);
+      const result = await employeeService.deleteEmployee(req.params.userId, req.user);
       res.status(200).json(result);
     } catch (error) {
       if (error.statusCode) {
@@ -105,7 +118,8 @@ class EmployeeController {
 
   async getProfile(req, res, next) {
     try {
-      const profile = await employeeService.getProfileByUserId(req.params.userId || req.user._id);
+      const targetUserId = req.params.userId || req.user._id;
+      const profile = await employeeService.getProfileByUserId(targetUserId, req.user);
       if (!profile) {
         return res.status(404).json({
           success: false,
@@ -117,18 +131,30 @@ class EmployeeController {
         data: profile
       });
     } catch (error) {
+      if (error.statusCode) {
+        return res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        });
+      }
       next(error);
     }
   }
 
   async getAll(req, res, next) {
     try {
-      const employees = await employeeService.getAllEmployees();
+      const employees = await employeeService.getAllEmployees(req.query, req.user);
       res.status(200).json({
         success: true,
         data: employees
       });
     } catch (error) {
+      if (error.statusCode) {
+        return res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        });
+      }
       next(error);
     }
   }

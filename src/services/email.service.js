@@ -324,6 +324,80 @@ class EmailService {
 
     return await transporter.sendMail(mailOptions);
   }
+
+  /**
+   * Send confirmation email to career / job applicant
+   * @param {Object} options
+   * @param {string} options.to - Recipient email
+   * @param {string} options.name - Applicant full name
+   * @param {string} options.jobTitle - Job title applied for
+   * @param {string} options.applicationCode - Application reference code
+   */
+  async sendJobApplicationConfirmationEmail({ to, name, jobTitle, applicationCode }) {
+    if (!to) {
+      console.warn('[EmailService] sendJobApplicationConfirmationEmail called without recipient email. Skipping.');
+      return null;
+    }
+
+    const transporter = this.getTransporter();
+    const sender = process.env.EMAIL_ID_SENDER || 'info@metrogram.co.in';
+
+    const subject = `Application Received: ${jobTitle} (${applicationCode}) - MetroGram Careers`;
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 8px; background-color: #ffffff;">
+        <div style="text-align: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #0f766e;">
+          <h2 style="color: #0f766e; margin: 0; font-size: 24px; letter-spacing: 0.5px;">METROGRAM CAREERS</h2>
+          <p style="color: #64748b; margin: 4px 0 0 0; font-size: 13px;">Healthcare & Diagnostic Excellence</p>
+        </div>
+
+        <p style="font-size: 16px; color: #1e293b; margin-bottom: 12px;">Hello <strong>${name || 'Applicant'}</strong>,</p>
+        <p style="font-size: 14px; color: #334155; line-height: 1.6; margin-bottom: 20px;">
+          Thank you for your interest in joining <strong>MetroGram</strong>! We have successfully received your application and resume for the position of <strong>${jobTitle}</strong>.
+        </p>
+
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 18px; margin: 20px 0;">
+          <h3 style="font-size: 14px; color: #0f766e; margin: 0 0 12px 0; text-transform: uppercase; letter-spacing: 0.5px;">Application Summary</h3>
+          <table style="width: 100%; font-size: 13px; color: #334155; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;">Position:</td>
+              <td style="padding: 6px 0; font-weight: bold; text-align: right;">${jobTitle}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;">Reference Code:</td>
+              <td style="padding: 6px 0; font-weight: bold; text-align: right; font-family: monospace; color: #0f766e;">${applicationCode}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;">Status:</td>
+              <td style="padding: 6px 0; font-weight: bold; text-align: right; color: #0284c7;">APPLIED (Under Review)</td>
+            </tr>
+          </table>
+        </div>
+
+        <p style="font-size: 13px; color: #475569; line-height: 1.6; margin-bottom: 20px;">
+          Our recruitment team will review your qualifications and experience. If your profile matches our requirements, we will reach out to you directly for the next round of discussions.
+        </p>
+
+        <p style="font-size: 13px; color: #334155; margin-bottom: 4px;">
+          For inquiries regarding careers at MetroGram, feel free to contact us at <a href="mailto:info@metrogram.co.in" style="color: #0f766e; text-decoration: none;">info@metrogram.co.in</a>.
+        </p>
+
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0 14px 0;" />
+        <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">
+          &copy; ${new Date().getFullYear()} MetroGram. All rights reserved.<br/>
+          94 sharda niwas, Braham asthani road pillar -68 Igims patna -800014
+        </p>
+      </div>
+    `;
+
+    const mailOptions = {
+      from: `"MetroGram Careers" <${sender}>`,
+      to,
+      subject,
+      html
+    };
+
+    return await transporter.sendMail(mailOptions);
+  }
 }
 
 export default new EmailService();
