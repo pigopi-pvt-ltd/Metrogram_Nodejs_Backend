@@ -6,6 +6,7 @@ import Service from '../service/service.model.js';
 import CardPlan from '../card/cardPlan.model.js';
 import Payment from '../payment/payment.model.js';
 import ServiceBooking from '../service/serviceBooking.model.js';
+import customerService from '../customer/customer.service.js';
 import { ROLES } from '../../constants/roles.js';
 
 class DashboardService {
@@ -37,6 +38,7 @@ class DashboardService {
         User.countDocuments({ role: ROLES.MANAGER }),
         User.countDocuments({ role: ROLES.EMPLOYEE }),
         User.countDocuments({ role: ROLES.CUSTOMER }),
+        User.countDocuments({ role: ROLES.CUSTOMER, createdBy: null }),
         User.countDocuments({ isActive: true }),
         User.countDocuments({ isActive: false }),
         Service.countDocuments(),
@@ -67,6 +69,13 @@ class DashboardService {
 
       const totalRevenue = revenueAggregate.length > 0 ? revenueAggregate[0].totalRevenue : 0;
 
+      // Count unassigned customers (self-registered without assigned employee)
+      const selfRegCustomerIds = (await User.find({ role: ROLES.CUSTOMER, createdBy: null }).select('_id')).map(u => u._id);
+      const unassignedCustomersCount = await Customer.countDocuments({
+        assignedEmployee: null,
+        user: { $in: selfRegCustomerIds }
+      });
+
       return {
         role: ROLES.SUPER_ADMIN,
         summary: {
@@ -74,6 +83,8 @@ class DashboardService {
           totalManagers,
           totalEmployees,
           totalCustomers,
+          unassignedCustomers: unassignedCustomersCount,
+          assignedCustomers: Math.max(0, totalCustomers - unassignedCustomersCount),
           activeUsers,
           inactiveUsers,
           totalServices,
@@ -96,6 +107,9 @@ class DashboardService {
       const managedEmployees = await Employee.find({ manager: managerProfile?._id });
       const managedEmployeeUserIds = managedEmployees.map(e => e.user);
 
+      // Scoped customer filter for this manager's team
+      const customerScopeFilter = await customerService.buildCustomerScopeFilter(user);
+
       const [
         totalManagedEmployees,
         totalCustomers,
@@ -106,9 +120,10 @@ class DashboardService {
         recentCustomers
       ] = await Promise.all([
         Employee.countDocuments({ manager: managerProfile?._id }),
-        Customer.countDocuments(),
-        Customer.countDocuments({ 'activeCard.cardNumber': { $ne: null } }),
+        Customer.countDocuments(customerScopeFilter),
+        Customer.countDocuments({ ...customerScopeFilter, 'activeCard.cardNumber': { $ne: null } }),
         Customer.countDocuments({
+          ...customerScopeFilter,
           'activeCard.cardNumber': { $ne: null },
           'activeCard.expiresAt': { $gte: new Date() },
           'activeCard.status': { $in: ['ACTIVE', 'SUCCESS'] }
@@ -118,8 +133,9 @@ class DashboardService {
           .populate('profile')
           .sort({ createdAt: -1 })
           .limit(5),
-        User.find({ role: ROLES.CUSTOMER })
-          .populate('profile')
+        Customer.find(customerScopeFilter)
+          .populate('user', 'firstName lastName email phoneNumber isActive createdAt')
+          .populate('assignedEmployee', 'firstName lastName email phoneNumber')
           .sort({ createdAt: -1 })
           .limit(5)
       ]);
@@ -146,16 +162,18 @@ class DashboardService {
 
     if (role === ROLES.EMPLOYEE) {
       const employeeProfile = await Employee.findOne({ user: user._id });
+      const customerScopeFilter = await customerService.buildCustomerScopeFilter(user);
 
       const [
         totalCustomers,
         customersCreatedByMe,
         recentCustomers
       ] = await Promise.all([
-        Customer.countDocuments(),
-        User.countDocuments({ role: ROLES.CUSTOMER, createdBy: user._id }),
-        User.find({ role: ROLES.CUSTOMER })
-          .populate('profile')
+        Customer.countDocuments(customerScopeFilter),
+        Customer.countDocuments(customerScopeFilter),
+        Customer.find(customerScopeFilter)
+          .populate('user', 'firstName lastName email phoneNumber isActive createdAt')
+          .populate('assignedEmployee', 'firstName lastName email phoneNumber')
           .sort({ createdAt: -1 })
           .limit(5)
       ]);

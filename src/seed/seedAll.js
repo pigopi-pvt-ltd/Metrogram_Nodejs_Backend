@@ -482,7 +482,33 @@ const seedAll = async () => {
           },
           loyaltyPoints: 50
         },
-        creatorId: firstEmployee._id
+        creatorId: firstEmployee._id,
+        creatorRole: ROLES.EMPLOYEE
+      },
+      {
+        userData: {
+          firstName: 'Robert',
+          lastName: 'Langdon',
+          email: 'customer.self@gmail.com',
+          password: 'Customer@123456',
+          phoneNumber: '+919876543299'
+        },
+        profileData: {
+          customerCode: 'CUST-SELF-01',
+          membershipType: 'REGULAR',
+          aadharNumber: '9999 8888 7777',
+          panNumber: 'SELF1234Z',
+          address: {
+            street: '10 Harvard Yard',
+            city: 'Cambridge',
+            state: 'Massachusetts',
+            zipCode: '02138',
+            country: 'USA'
+          },
+          loyaltyPoints: 0
+        },
+        creatorId: null,
+        creatorRole: null
       }
     ];
 
@@ -492,7 +518,8 @@ const seedAll = async () => {
         const createdCustomer = await customerService.createCustomer({
           userData: cust.userData,
           profileData: cust.profileData,
-          creatorId: cust.creatorId
+          creatorId: cust.creatorId,
+          creatorRole: cust.creatorRole
         });
         console.log(`   ✅ Customer created: ${cust.userData.email} | Aadhar: ${cust.profileData.aadharNumber} | PAN: ${cust.profileData.panNumber}`);
 

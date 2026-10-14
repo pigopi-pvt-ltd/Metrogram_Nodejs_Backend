@@ -8,7 +8,8 @@
     "start": "bun src/server.js",
     "dev": "bun --watch src/server.js",
     "seed": "bun src/seed/seedAll.js",
-    "seed:superadmin": "bun src/seed/seedSuperAdmin.js"
+    "seed:superadmin": "bun src/seed/seedSuperAdmin.js",
+    "test": "bun test/customerOwnership.test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

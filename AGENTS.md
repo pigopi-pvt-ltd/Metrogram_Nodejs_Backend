@@ -115,6 +115,24 @@ Role permissions are defined in `src/constants/roles.js`:
    - **Manager Reassignment**: Only Super Admin can transfer an employee to a different manager (with capacity check on the target manager). Managers cannot reassign employees.
    - **Dashboard**: A Manager's dashboard strictly displays metrics for their own team.
 
+#### Customer Ownership, Visibility & Assignment Rules:
+1. **Employee Visibility & Isolation**:
+   - An Employee can **only see customers registered by them or assigned to them**.
+   - They **cannot** see customers registered by or assigned to other employees.
+   - Access attempts to view, update, delete, or assign cards to another employee's customer return 403 Forbidden.
+2. **Manager Visibility & Team Scoping**:
+   - A Manager can **only see customers registered by or assigned to employees in their managed team** (plus customers created directly by the manager).
+   - They **cannot** see customers registered by employees under other managers.
+   - Access attempts to view, update, delete, or assign cards to customers under other managers return 403 Forbidden.
+3. **Self-Registered Customers**:
+   - Customers who register by themselves (via `POST /api/auth/register`) have `createdBy: null` and `assignedEmployee: null`.
+   - They **do not fall under any employee or manager**.
+   - Neither employees nor managers can view, update, or manage self-registered unassigned customers.
+4. **Super Admin Assignment & Reassignment**:
+   - Super Admin has global visibility across all customers and can filter with `?unassigned=true` (or `?selfRegistered=true`), `?employee=<id>`, and `?manager=<id>`.
+   - Super Admin can assign or reassign an employee to any customer (especially self-registered customers) via `PATCH /api/customers/:userId/assign-employee`.
+   - Once assigned to an employee, the customer automatically falls under that employee and their manager.
+
 ---
 
 ## 📡 Complete API Endpoints Map
@@ -221,11 +239,12 @@ Role permissions are defined in `src/constants/roles.js`:
 - `DELETE /api/employees/:userId` — Delete employee & profile (`SUPER_ADMIN`, `MANAGER`).
 
 ### 🛍️ 12. Customer Module (`/api/customers`)
-- `POST /api/customers` — Create customer with Aadhar & PAN details and optional document images (`aadharImage`, `panImage`) stored in Cloudinary (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`). Accepts `multipart/form-data` or JSON.
-- `GET /api/customers` — List all customers (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
-- `GET /api/customers/:userId` — View customer profile (All authenticated roles).
-- `PUT /api/customers/:userId` — Update customer with Aadhar & PAN details and document images (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`, or the `CUSTOMER` updating their own profile). Accepts `multipart/form-data` or JSON.
-- `DELETE /api/customers/:userId` — Delete customer & profile and remove stored document images from Cloudinary (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
+- `POST /api/customers` — Create customer with Aadhar & PAN details and optional document images (`aadharImage`, `panImage`) stored in Cloudinary (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`). Automatically assigns customer to logged-in employee if created by Employee. Accepts `multipart/form-data` or JSON.
+- `GET /api/customers` — List customers with strict role scoping: Employees see only their registered/assigned customers; Managers see only customers under their managed team; Super Admin sees all customers with optional filters (`?unassigned=true`, `?employee=<id>`, `?manager=<id>`, `search`, `page`, `limit`).
+- `GET /api/customers/:userId` — View customer profile (enforces ownership access: 403 Forbidden if accessed across unauthorized employees/managers).
+- `PUT /api/customers/:userId` — Update customer with Aadhar & PAN details and document images (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`, or the `CUSTOMER` updating their own profile). Super Admin can reassign `assignedEmployee`.
+- `PATCH /api/customers/:userId/assign-employee` or `POST /api/customers/:userId/assign-employee` — Assign or reassign an employee to a customer (supports unassigning with `employeeId: null`) (`SUPER_ADMIN` only).
+- `DELETE /api/customers/:userId` — Delete customer & profile and remove stored document images from Cloudinary (enforces ownership: Employees can only delete their own; Managers can only delete within their team).
 
 ### 👥 13. Generic User Module (`/api/users`)
 - `POST /api/users` — Generic creation (enforces role creation hierarchy).

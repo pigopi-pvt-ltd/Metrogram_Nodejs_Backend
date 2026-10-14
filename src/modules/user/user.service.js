@@ -36,7 +36,12 @@ class UserService {
         return await employeeService.createEmployee({ userData, profileData, creatorId, creatorRole });
 
       case ROLES.CUSTOMER:
-        return await customerService.createCustomer({ userData, profileData, creatorId });
+        return await customerService.createCustomer({
+          userData,
+          profileData,
+          creatorId,
+          creatorRole
+        });
 
       default: {
         const err = new Error(`Unsupported role '${role}'`);
@@ -82,7 +87,11 @@ class UserService {
         );
 
       case ROLES.CUSTOMER:
-        return await customerService.updateCustomer(userId, { userData, profileData });
+        return await customerService.updateCustomer(
+          userId,
+          { userData, profileData },
+          updaterUser || { role: updaterRole, _id: updaterId }
+        );
 
       case ROLES.SUPER_ADMIN: {
         if (!isSelf && updaterRole !== ROLES.SUPER_ADMIN) {
@@ -143,7 +152,10 @@ class UserService {
         );
 
       case ROLES.CUSTOMER:
-        return await customerService.deleteCustomer(userId);
+        return await customerService.deleteCustomer(
+          userId,
+          deleterUser || { role: deleterRole, _id: deleterId }
+        );
 
       default:
         await User.findByIdAndDelete(userId);
@@ -198,6 +210,15 @@ class UserService {
       }
     }
 
+    // If Manager or Employee toggling a customer's status, verify customer ownership
+    if (targetUser.role === ROLES.CUSTOMER) {
+      await customerService.verifyCustomerAccess(
+        userId,
+        updaterUser || { role: updaterRole, _id: updaterId },
+        'toggle status of'
+      );
+    }
+
     targetUser.isActive = isActive !== undefined ? isActive : !targetUser.isActive;
     await targetUser.save();
 
@@ -207,6 +228,7 @@ class UserService {
   /**
    * Get all users with search, role filter, pagination
    * Scopes managers to only see their own employees and customers
+   * Scopes employees to only see themselves and their registered/assigned customers
    */
   async getAllUsers(
     { role, search, managerId, page = 1, limit = 10 },
@@ -222,22 +244,53 @@ class UserService {
       ];
     }
 
+    // Role scoping for Employees
+    if (requestingUser && requestingUser.role === ROLES.EMPLOYEE) {
+      const myCustomers = await Customer.find({ assignedEmployee: requestingUser._id }).select('user');
+      const myCustomerUserIds = myCustomers.map((c) => c.user);
+      const createdUsers = await User.find({ role: ROLES.CUSTOMER, createdBy: requestingUser._id }).select('_id');
+      const allMyCustomerUserIds = [...new Set([...myCustomerUserIds.map(String), ...createdUsers.map((u) => String(u._id))])];
+
+      if (role && role.toUpperCase() === ROLES.CUSTOMER) {
+        query._id = { $in: allMyCustomerUserIds };
+        query.role = ROLES.CUSTOMER;
+      } else if (role && role.toUpperCase() === ROLES.EMPLOYEE) {
+        query._id = requestingUser._id;
+        query.role = ROLES.EMPLOYEE;
+      } else if (role) {
+        query._id = null;
+      } else {
+        query._id = { $in: [...allMyCustomerUserIds, requestingUser._id] };
+      }
+    }
     // Role scoping for Managers
-    if (requestingUser && requestingUser.role === ROLES.MANAGER) {
+    else if (requestingUser && requestingUser.role === ROLES.MANAGER) {
       const managerDoc = await Manager.findOne({ user: requestingUser._id });
       const managedEmployees = await Employee.find({ manager: managerDoc?._id });
       const managedUserIds = managedEmployees.map((e) => e.user);
+      const allowedStaffIds = [...managedUserIds, requestingUser._id];
+
+      // Find customer IDs registered by or assigned to employees under this manager (plus manager's direct customers)
+      const teamCustomers = await Customer.find({ assignedEmployee: { $in: managedUserIds } }).select('user');
+      const teamCustomerUserIdsFromAssigned = teamCustomers.map((c) => c.user);
+      const createdUsers = await User.find({ role: ROLES.CUSTOMER, createdBy: { $in: allowedStaffIds } }).select('_id');
+      const allTeamCustomerUserIds = [...new Set([...teamCustomerUserIdsFromAssigned.map(String), ...createdUsers.map((u) => String(u._id))])];
 
       if (role && role.toUpperCase() === ROLES.EMPLOYEE) {
         query._id = { $in: managedUserIds };
         query.role = ROLES.EMPLOYEE;
+      } else if (role && role.toUpperCase() === ROLES.CUSTOMER) {
+        query._id = { $in: allTeamCustomerUserIds };
+        query.role = ROLES.CUSTOMER;
       } else if (role) {
-        query.role = role.toUpperCase();
+        if (role.toUpperCase() === ROLES.MANAGER) {
+          query._id = requestingUser._id;
+          query.role = ROLES.MANAGER;
+        } else {
+          query._id = null;
+        }
       } else {
-        query.$or = [
-          { _id: { $in: managedUserIds } },
-          { role: ROLES.CUSTOMER }
-        ];
+        query._id = { $in: [...managedUserIds, ...allTeamCustomerUserIds, requestingUser._id] };
       }
     } else {
       if (role) {
@@ -278,11 +331,20 @@ class UserService {
 
   /**
    * Get single user by ID
+   * Enforces role isolation verification for customers
    */
-  async getUserById(id) {
-    return await User.findById(id)
+  async getUserById(id, requestingUser = null) {
+    const user = await User.findById(id)
       .populate('profile')
       .populate('createdBy', 'firstName lastName email role');
+
+    if (!user) return null;
+
+    if (user.role === ROLES.CUSTOMER && requestingUser) {
+      await customerService.verifyCustomerAccess(id, requestingUser, 'view');
+    }
+
+    return user;
   }
 }
 

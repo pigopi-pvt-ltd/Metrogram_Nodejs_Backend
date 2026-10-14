@@ -41,7 +41,7 @@ class EmailService {
    */
   async sendPasswordResetEmail({ to, name, otp, expiresInMinutes = 10 }) {
     const transporter = this.getTransporter();
-    const sender = process.env.EMAIL_ID_SENDER || 'noreply@pigo-pi.com';
+    const sender = process.env.EMAIL_ID_SENDER || 'info@metrogram.co.in';
 
     const subject = 'Password Reset Code - MetroGram';
     const html = `
@@ -94,7 +94,7 @@ class EmailService {
    */
   async sendPasswordChangedConfirmation({ to, name }) {
     const transporter = this.getTransporter();
-    const sender = process.env.EMAIL_ID_SENDER || 'noreply@pigo-pi.com';
+    const sender = process.env.EMAIL_ID_SENDER || 'info@metrogram.co.in';
 
     const subject = 'Your MetroGram Password Was Changed';
     const html = `
@@ -146,7 +146,7 @@ class EmailService {
     }
 
     const transporter = this.getTransporter();
-    const sender = process.env.EMAIL_ID_SENDER || 'noreply@metrogram.in';
+    const sender = process.env.EMAIL_ID_SENDER || 'info@metrogram.co.in';
 
     const itemLabel = receiptData?.itemType === 'CARD' ? 'Health Card Membership' : 'Diagnostic Service Booking';
     const itemName = receiptData?.itemName || 'Healthcare Service';
@@ -210,7 +210,7 @@ class EmailService {
         </p>
 
         <p style="font-size: 13px; color: #334155; margin-bottom: 4px;">
-          Need assistance or have questions? Contact us at <a href="mailto:contact@metrogram.in" style="color: #0f766e; text-decoration: none;">contact@metrogram.in</a> or call <strong>+91 9798144621</strong>.
+          Need assistance or have questions? Contact us at <a href="mailto:info@metrogram.co.in" style="color: #0f766e; text-decoration: none;">info@metrogram.co.in</a> or call <strong>+91 9798144621</strong>.
         </p>
 
         <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0 14px 0;" />
@@ -256,7 +256,7 @@ class EmailService {
     }
 
     const transporter = this.getTransporter();
-    const sender = process.env.EMAIL_ID_SENDER || 'reports@metrogram.in';
+    const sender = process.env.EMAIL_ID_SENDER || 'info@metrogram.co.in';
 
     const subject = `Your Diagnostic Test Report is Ready: ${testName || 'Lab Investigation'} - MetroGram`;
     const html = `
@@ -294,7 +294,7 @@ class EmailService {
         </p>
 
         <p style="font-size: 13px; color: #334155; margin-bottom: 4px;">
-          Please consult your physician with this report for medical evaluation. For any assistance, reach us at <a href="mailto:contact@metrogram.in" style="color: #0f766e; text-decoration: none;">contact@metrogram.in</a> or call <strong>+91 9798144621</strong>.
+          Please consult your physician with this report for medical evaluation. For any assistance, reach us at <a href="mailto:info@metrogram.co.in" style="color: #0f766e; text-decoration: none;">info@metrogram.co.in</a> or call <strong>+91 9798144621</strong>.
         </p>
 
         <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0 14px 0;" />

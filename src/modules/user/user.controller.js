@@ -204,7 +204,8 @@ class UserController {
           panImage: panImageUrl,
           panImagePublicId,
           address: parsedAddress,
-          loyaltyPoints
+          loyaltyPoints,
+          assignedEmployee: req.body.assignedEmployee || req.body.employeeId
         },
         creatorId: req.user._id,
         creatorRole: req.user.role
@@ -357,7 +358,7 @@ class UserController {
    */
   async getUserById(req, res, next) {
     try {
-      const user = await userService.getUserById(req.params.id);
+      const user = await userService.getUserById(req.params.id, req.user);
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -369,6 +370,12 @@ class UserController {
         data: user
       });
     } catch (error) {
+      if (error.statusCode) {
+        return res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        });
+      }
       next(error);
     }
   }

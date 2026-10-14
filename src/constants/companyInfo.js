@@ -7,8 +7,8 @@ export const COMPANY_INFO = {
   cin: 'U86905BR2026OPC087163',
   address: '94 sharda niwas, Braham asthani road pillar -68 Igims patna -800014',
   contact: '9798144621',
-  email: 'contact@metrogram.in',
-  website: 'https://metrogram.in',
+  email: 'info@metrogram.co.in',
+  website: 'https://metrogram.co.in',
   tagline: 'Healthcare & Diagnostic Excellence'
 };
 

@@ -1,5 +1,5 @@
 import customerService from './customer.service.js';
-import { uploadBufferToCloudinary, deleteFromCloudinary } from '../../config/cloudinary.js';
+import { uploadBufferToCloudinary } from '../../config/cloudinary.js';
 
 class CustomerController {
   async create(req, res, next) {
@@ -15,7 +15,9 @@ class CustomerController {
         aadharNumber,
         panNumber,
         address,
-        loyaltyPoints
+        loyaltyPoints,
+        assignedEmployee,
+        employeeId
       } = req.body;
 
       let parsedAddress = address;
@@ -67,9 +69,11 @@ class CustomerController {
           panImage: panImageUrl,
           panImagePublicId,
           address: parsedAddress,
-          loyaltyPoints
+          loyaltyPoints,
+          assignedEmployee: assignedEmployee || employeeId
         },
-        creatorId: req.user._id
+        creatorId: req.user._id,
+        creatorRole: req.user.role
       });
 
       res.status(201).json({
@@ -100,7 +104,9 @@ class CustomerController {
       // 2. If caller is a CUSTOMER, verify ownership (support matching against either User ID or Customer Profile ID)
       if (req.user.role === 'CUSTOMER') {
         const loggedInUserId = String(req.user._id);
-        const loggedInProfileId = req.user.profile?._id ? String(req.user.profile._id) : (req.user.profile ? String(req.user.profile) : null);
+        const loggedInProfileId = req.user.profile?._id
+          ? String(req.user.profile._id)
+          : (req.user.profile ? String(req.user.profile) : null);
 
         const isOwner = targetUserId === loggedInUserId || (loggedInProfileId && targetUserId === loggedInProfileId);
 
@@ -127,7 +133,9 @@ class CustomerController {
         aadharNumber,
         panNumber,
         address,
-        loyaltyPoints
+        loyaltyPoints,
+        assignedEmployee,
+        employeeId
       } = req.body;
 
       const userData = {};
@@ -149,6 +157,9 @@ class CustomerController {
       }
       if (aadharNumber !== undefined) profileData.aadharNumber = aadharNumber;
       if (panNumber !== undefined) profileData.panNumber = panNumber ? panNumber.toUpperCase() : null;
+
+      if (assignedEmployee !== undefined) profileData.assignedEmployee = assignedEmployee;
+      if (employeeId !== undefined) profileData.employeeId = employeeId;
 
       if (address !== undefined) {
         if (typeof address === 'string') {
@@ -189,10 +200,14 @@ class CustomerController {
         }
       }
 
-      const updated = await customerService.updateCustomer(targetUserId, {
-        userData,
-        profileData
-      });
+      const updated = await customerService.updateCustomer(
+        targetUserId,
+        {
+          userData,
+          profileData
+        },
+        req.user
+      );
 
       res.status(200).json({
         success: true,
@@ -213,7 +228,7 @@ class CustomerController {
 
   async delete(req, res, next) {
     try {
-      const result = await customerService.deleteCustomer(req.params.userId);
+      const result = await customerService.deleteCustomer(req.params.userId, req.user);
       res.status(200).json(result);
     } catch (error) {
       if (error.statusCode) {
@@ -228,7 +243,8 @@ class CustomerController {
 
   async getProfile(req, res, next) {
     try {
-      const profile = await customerService.getProfileByUserId(req.params.userId || req.user._id);
+      const targetUserId = req.params.userId || req.user._id;
+      const profile = await customerService.getProfileByUserId(targetUserId, req.user);
       if (!profile) {
         return res.status(404).json({
           success: false,
@@ -240,25 +256,42 @@ class CustomerController {
         data: profile
       });
     } catch (error) {
+      if (error.statusCode) {
+        return res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        });
+      }
       next(error);
     }
   }
 
   async getAll(req, res, next) {
     try {
-      const customers = await customerService.getAllCustomers();
+      const result = await customerService.getAllCustomers(req.query, req.user);
       res.status(200).json({
         success: true,
-        data: customers
+        count: result.customers.length,
+        total: result.total,
+        totalPages: result.totalPages,
+        currentPage: result.currentPage,
+        limit: result.limit,
+        data: result.customers
       });
     } catch (error) {
+      if (error.statusCode) {
+        return res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        });
+      }
       next(error);
     }
   }
 
   async getCustomerBookings(req, res, next) {
     try {
-      const result = await customerService.getCustomerBookings(req.params.userId, req.query);
+      const result = await customerService.getCustomerBookings(req.params.userId, req.query, req.user);
       res.status(200).json({
         success: true,
         customer: result.customer,
@@ -270,6 +303,42 @@ class CustomerController {
         data: result.bookings
       });
     } catch (error) {
+      if (error.statusCode) {
+        return res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        });
+      }
+      next(error);
+    }
+  }
+
+  /**
+   * Super Admin assigns or reassigns an employee to a customer
+   */
+  async assignEmployee(req, res, next) {
+    try {
+      const { employeeId } = req.body;
+      const updated = await customerService.assignEmployee(
+        req.params.userId,
+        employeeId,
+        req.user
+      );
+
+      res.status(200).json({
+        success: true,
+        message: employeeId && employeeId !== 'none'
+          ? 'Employee assigned to customer successfully'
+          : 'Employee unassigned from customer successfully',
+        data: updated
+      });
+    } catch (error) {
+      if (error.statusCode) {
+        return res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        });
+      }
       next(error);
     }
   }

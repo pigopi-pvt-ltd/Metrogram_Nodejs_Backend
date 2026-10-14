@@ -5,6 +5,7 @@ import receiptPdfService from './receipt.pdf.js';
 import emailService from '../../services/email.service.js';
 import { COMPANY_INFO } from '../../constants/companyInfo.js';
 import { ROLES } from '../../constants/roles.js';
+import customerService from '../customer/customer.service.js';
 
 class ReceiptService {
   /**
@@ -217,6 +218,11 @@ class ReceiptService {
   async getReceiptDataByCard(userId, requestingUser, cardNumber = null) {
     // If requestingUser is customer, ensure they are fetching their own card
     const targetUserId = (requestingUser.role === ROLES.CUSTOMER) ? requestingUser._id : (userId || requestingUser._id);
+
+    // Verify staff has access to this customer
+    if (requestingUser.role === ROLES.EMPLOYEE || requestingUser.role === ROLES.MANAGER) {
+      await customerService.verifyCustomerAccess(targetUserId, requestingUser, 'view receipts of');
+    }
 
     const customer = await Customer.findOne({ user: targetUserId })
       .populate('user', 'firstName lastName email phoneNumber')

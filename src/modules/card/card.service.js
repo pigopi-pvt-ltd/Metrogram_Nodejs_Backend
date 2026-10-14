@@ -5,6 +5,7 @@ import { ROLES, PROFILE_MODELS } from '../../constants/roles.js';
 import receiptService from '../receipt/receipt.service.js';
 import Payment from '../payment/payment.model.js';
 import paymentService from '../payment/payment.service.js';
+import customerService from '../customer/customer.service.js';
 
 class CardService {
   /**
@@ -269,11 +270,18 @@ class CardService {
     targetCustomerUserId,
     cardPlanId,
     assignedById,
+    requestingUser = null,
     paymentMethod = 'CASH',
     paymentStatus = 'COMPLETED',
     returnUrl,
     notes = ''
   }) {
+    // Role-based customer ownership check
+    const staffUser = requestingUser || (await User.findById(assignedById));
+    if (staffUser && staffUser.role !== ROLES.SUPER_ADMIN) {
+      await customerService.verifyCustomerAccess(targetCustomerUserId, staffUser, 'assign cards to');
+    }
+
     const user = await User.findById(targetCustomerUserId);
     if (!user || user.role !== ROLES.CUSTOMER) {
       const err = new Error('Target customer user not found');
@@ -475,7 +483,11 @@ class CardService {
   /**
    * Get card details for a customer user
    */
-  async getCustomerCard(userId) {
+  async getCustomerCard(userId, requestingUser = null) {
+    if (requestingUser) {
+      await customerService.verifyCustomerAccess(userId, requestingUser, 'view card details of');
+    }
+
     const customer = await Customer.findOne({ user: userId }).populate('activeCard.cardPlan');
     if (!customer) {
       const err = new Error('Customer profile not found');
@@ -608,35 +620,49 @@ class CardService {
   /**
    * Super Admin & Manager: List all distributed cards with customer info, distribution date, and renewal date
    */
-  async getDistributedCards({
-    page = 1,
-    limit = 20,
-    search,
-    status,
-    planType,
-    planId,
-    distributedFrom,
-    distributedTo,
-    startDate,
-    endDate,
-    renewalFrom,
-    renewalTo,
-    expiringWithinDays,
-    scope = 'active',
-    sortBy = 'purchasedAt',
-    sortOrder = 'desc'
-  } = {}) {
+  async getDistributedCards(
+    {
+      page = 1,
+      limit = 20,
+      search,
+      status,
+      planType,
+      planId,
+      distributedFrom,
+      distributedTo,
+      startDate,
+      endDate,
+      renewalFrom,
+      renewalTo,
+      expiringWithinDays,
+      scope = 'active',
+      sortBy = 'purchasedAt',
+      sortOrder = 'desc'
+    } = {},
+    requestingUser = null
+  ) {
     const now = new Date();
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
     const skip = (pageNum - 1) * limitNum;
 
+    // Apply role scoping if manager
+    let scopeBaseFilter = {};
+    if (requestingUser && requestingUser.role === ROLES.MANAGER) {
+      scopeBaseFilter = await customerService.buildCustomerScopeFilter(requestingUser);
+    }
+
     // Handle scope === 'all': include all cards from cardHistory
     if (scope === 'all') {
       const customerFilter = {
-        $or: [
-          { 'cardHistory.0': { $exists: true } },
-          { 'activeCard.cardNumber': { $ne: null } }
+        $and: [
+          scopeBaseFilter,
+          {
+            $or: [
+              { 'cardHistory.0': { $exists: true } },
+              { 'activeCard.cardNumber': { $ne: null } }
+            ]
+          }
         ]
       };
 
@@ -762,7 +788,8 @@ class CardService {
 
     // Default: scope === 'active' (cards recorded on activeCard)
     const filter = {
-      'activeCard.cardNumber': { $ne: null }
+      'activeCard.cardNumber': { $ne: null },
+      ...scopeBaseFilter
     };
 
     if (search && search.trim()) {
@@ -897,7 +924,7 @@ class CardService {
   /**
    * Super Admin & Manager: Comprehensive card distribution and renewal statistics
    */
-  async getCardDistributionStats() {
+  async getCardDistributionStats(requestingUser = null) {
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
@@ -909,6 +936,11 @@ class CardService {
     const next15Days = new Date(now.getTime() + 15 * 86400000);
     const next30Days = new Date(now.getTime() + 30 * 86400000);
     const next60Days = new Date(now.getTime() + 60 * 86400000);
+
+    let scopeBaseFilter = {};
+    if (requestingUser && requestingUser.role === ROLES.MANAGER) {
+      scopeBaseFilter = await customerService.buildCustomerScopeFilter(requestingUser);
+    }
 
     const [
       totalDistributedCards,
@@ -931,63 +963,75 @@ class CardService {
       recentCustomerDocs,
       upcomingRenewalDocs
     ] = await Promise.all([
-      Customer.countDocuments({ 'activeCard.cardNumber': { $ne: null } }),
+      Customer.countDocuments({ ...scopeBaseFilter, 'activeCard.cardNumber': { $ne: null } }),
       Customer.countDocuments({
+        ...scopeBaseFilter,
         'activeCard.cardNumber': { $ne: null },
         'activeCard.expiresAt': { $gte: now },
         'activeCard.status': { $in: ['ACTIVE', 'SUCCESS'] }
       }),
       Customer.countDocuments({
+        ...scopeBaseFilter,
         'activeCard.cardNumber': { $ne: null },
         $or: [
           { 'activeCard.expiresAt': { $lt: now } },
           { 'activeCard.status': 'EXPIRED' }
         ]
       }),
-      Customer.countDocuments({ hasCard: true }),
-      Customer.countDocuments(),
+      Customer.countDocuments({ ...scopeBaseFilter, hasCard: true }),
+      Customer.countDocuments(scopeBaseFilter),
       Customer.countDocuments({
+        ...scopeBaseFilter,
         'activeCard.cardNumber': { $ne: null },
         'activeCard.expiresAt': { $lt: now }
       }),
       Customer.countDocuments({
+        ...scopeBaseFilter,
         'activeCard.cardNumber': { $ne: null },
         'activeCard.expiresAt': { $gte: startOfToday, $lte: endOfToday }
       }),
       Customer.countDocuments({
+        ...scopeBaseFilter,
         'activeCard.cardNumber': { $ne: null },
         'activeCard.expiresAt': { $gte: now, $lte: next7Days }
       }),
       Customer.countDocuments({
+        ...scopeBaseFilter,
         'activeCard.cardNumber': { $ne: null },
         'activeCard.expiresAt': { $gte: now, $lte: next15Days }
       }),
       Customer.countDocuments({
+        ...scopeBaseFilter,
         'activeCard.cardNumber': { $ne: null },
         'activeCard.expiresAt': { $gte: now, $lte: next30Days }
       }),
       Customer.countDocuments({
+        ...scopeBaseFilter,
         'activeCard.cardNumber': { $ne: null },
         'activeCard.expiresAt': { $gte: now, $lte: next60Days }
       }),
       Customer.countDocuments({
+        ...scopeBaseFilter,
         'activeCard.cardNumber': { $ne: null },
         'activeCard.purchasedAt': { $gte: startOfToday, $lte: endOfToday }
       }),
       Customer.countDocuments({
+        ...scopeBaseFilter,
         'activeCard.cardNumber': { $ne: null },
         'activeCard.purchasedAt': { $gte: last7Days }
       }),
       Customer.countDocuments({
+        ...scopeBaseFilter,
         'activeCard.cardNumber': { $ne: null },
         'activeCard.purchasedAt': { $gte: startOfMonth }
       }),
       Customer.countDocuments({
+        ...scopeBaseFilter,
         'activeCard.cardNumber': { $ne: null },
         'activeCard.purchasedAt': { $gte: startOfYear }
       }),
       Customer.aggregate([
-        { $match: { 'activeCard.cardNumber': { $ne: null } } },
+        { $match: { ...scopeBaseFilter, 'activeCard.cardNumber': { $ne: null } } },
         {
           $group: {
             _id: '$activeCard.planType',
@@ -998,7 +1042,7 @@ class CardService {
         { $sort: { count: -1 } }
       ]),
       Customer.aggregate([
-        { $match: { 'activeCard.cardNumber': { $ne: null } } },
+        { $match: { ...scopeBaseFilter, 'activeCard.cardNumber': { $ne: null } } },
         {
           $group: {
             _id: '$activeCard.planName',
@@ -1010,12 +1054,13 @@ class CardService {
         },
         { $sort: { count: -1 } }
       ]),
-      Customer.find({ 'activeCard.cardNumber': { $ne: null } })
+      Customer.find({ ...scopeBaseFilter, 'activeCard.cardNumber': { $ne: null } })
         .populate('user', 'firstName lastName email phoneNumber')
         .populate('activeCard.cardPlan', 'name planType price')
         .sort({ 'activeCard.purchasedAt': -1 })
         .limit(5),
       Customer.find({
+        ...scopeBaseFilter,
         'activeCard.cardNumber': { $ne: null },
         'activeCard.expiresAt': { $gte: now }
       })
@@ -1081,15 +1126,18 @@ class CardService {
   /**
    * Super Admin & Manager: Targeted list of cards approaching or past renewal date
    */
-  async getUpcomingRenewals({
-    days = 30,
-    status = 'UPCOMING',
-    search,
-    page = 1,
-    limit = 20,
-    sortBy = 'expiresAt',
-    sortOrder = 'asc'
-  } = {}) {
+  async getUpcomingRenewals(
+    {
+      days = 30,
+      status = 'UPCOMING',
+      search,
+      page = 1,
+      limit = 20,
+      sortBy = 'expiresAt',
+      sortOrder = 'asc'
+    } = {},
+    requestingUser = null
+  ) {
     const now = new Date();
     const daysNum = Math.max(1, parseInt(days, 10) || 30);
     const targetDate = new Date(now.getTime() + daysNum * 86400000);
@@ -1098,8 +1146,14 @@ class CardService {
     const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
     const skip = (pageNum - 1) * limitNum;
 
+    let scopeBaseFilter = {};
+    if (requestingUser && requestingUser.role === ROLES.MANAGER) {
+      scopeBaseFilter = await customerService.buildCustomerScopeFilter(requestingUser);
+    }
+
     const filter = {
-      'activeCard.cardNumber': { $ne: null }
+      'activeCard.cardNumber': { $ne: null },
+      ...scopeBaseFilter
     };
 
     const upperStatus = (status || 'UPCOMING').toUpperCase();

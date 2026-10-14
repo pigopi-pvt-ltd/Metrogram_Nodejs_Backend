@@ -14,6 +14,11 @@ const customerSchema = new mongoose.Schema(
       unique: true,
       sparse: true
     },
+    assignedEmployee: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null
+    },
     membershipType: {
       type: String,
       enum: ['REGULAR', 'PREMIUM', 'VIP'],
@@ -118,6 +123,7 @@ const customerSchema = new mongoose.Schema(
 );
 
 // Indexes for card distribution and renewal tracking
+customerSchema.index({ assignedEmployee: 1 });
 customerSchema.index({ 'activeCard.cardNumber': 1 });
 customerSchema.index({ 'activeCard.purchasedAt': -1 });
 customerSchema.index({ 'activeCard.expiresAt': 1 });

@@ -220,6 +220,7 @@ class CardController {
         targetCustomerUserId: customerUserId,
         cardPlanId,
         assignedById: req.user._id,
+        requestingUser: req.user,
         paymentMethod,
         paymentStatus,
         returnUrl,
@@ -250,7 +251,7 @@ class CardController {
    */
   async getMyCard(req, res, next) {
     try {
-      const result = await cardService.getCustomerCard(req.user._id);
+      const result = await cardService.getCustomerCard(req.user._id, req.user);
       res.status(200).json({
         success: true,
         data: result
@@ -271,7 +272,7 @@ class CardController {
    */
   async getCustomerCard(req, res, next) {
     try {
-      const result = await cardService.getCustomerCard(req.params.userId);
+      const result = await cardService.getCustomerCard(req.params.userId, req.user);
       res.status(200).json({
         success: true,
         data: result
@@ -292,7 +293,7 @@ class CardController {
    */
   async getDistributedCards(req, res, next) {
     try {
-      const result = await cardService.getDistributedCards(req.query);
+      const result = await cardService.getDistributedCards(req.query, req.user);
       res.status(200).json({
         success: true,
         message: 'Distributed cards retrieved successfully',
@@ -317,7 +318,7 @@ class CardController {
    */
   async getDistributionStats(req, res, next) {
     try {
-      const stats = await cardService.getCardDistributionStats();
+      const stats = await cardService.getCardDistributionStats(req.user);
       res.status(200).json({
         success: true,
         message: 'Card distribution statistics retrieved successfully',
@@ -339,7 +340,7 @@ class CardController {
    */
   async getUpcomingRenewals(req, res, next) {
     try {
-      const result = await cardService.getUpcomingRenewals(req.query);
+      const result = await cardService.getUpcomingRenewals(req.query, req.user);
       res.status(200).json({
         success: true,
         message: 'Card renewals retrieved successfully',

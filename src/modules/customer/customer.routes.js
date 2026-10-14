@@ -37,6 +37,18 @@ router.get(
   customerController.getCustomerBookings.bind(customerController)
 );
 
+// Super Admin can assign or reassign an employee to a customer (e.g. self-registered customers)
+router.patch(
+  '/:userId/assign-employee',
+  authorize(ROLES.SUPER_ADMIN),
+  customerController.assignEmployee.bind(customerController)
+);
+router.post(
+  '/:userId/assign-employee',
+  authorize(ROLES.SUPER_ADMIN),
+  customerController.assignEmployee.bind(customerController)
+);
+
 // All authenticated roles (SUPER_ADMIN, MANAGER, EMPLOYEE, or the CUSTOMER themselves) can update
 router.put(
   '/:userId',
