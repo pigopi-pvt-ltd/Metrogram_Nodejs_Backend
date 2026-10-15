@@ -206,7 +206,10 @@ class CardController {
         paymentMethod = 'CASH',
         paymentStatus = 'COMPLETED',
         returnUrl,
-        notes
+        notes,
+        cardNumber,
+        manualCardNumber,
+        cardNumberSuffix
       } = req.body;
 
       if (!customerUserId || !cardPlanId) {
@@ -224,7 +227,8 @@ class CardController {
         paymentMethod,
         paymentStatus,
         returnUrl,
-        notes
+        notes,
+        cardNumber: cardNumber || manualCardNumber || cardNumberSuffix
       });
 
       const statusCode = result.requiresPayment ? 201 : 200;

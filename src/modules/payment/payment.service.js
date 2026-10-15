@@ -8,6 +8,7 @@ import User from '../user/user.model.js';
 import { getCashfreeClient, getCashfreeEnvironment } from '../../config/cashfree.js';
 import { ROLES, PROFILE_MODELS } from '../../constants/roles.js';
 import receiptService from '../receipt/receipt.service.js';
+import { generateUniqueCardNumber, resolveCardNumber } from '../card/cardNumber.helper.js';
 
 class PaymentService {
   /**
@@ -40,7 +41,10 @@ class PaymentService {
     entityId,
     bookingDetails = {},
     returnUrl,
-    customNotes = ''
+    customNotes = '',
+    cardNumber = '',
+    manualCardNumber = '',
+    cardNumberSuffix = ''
   }) {
     if (!['CARD', 'SERVICE'].includes(entityType)) {
       const err = new Error("Invalid entityType. Must be 'CARD' or 'SERVICE'");
@@ -120,13 +124,21 @@ class PaymentService {
         throw err;
       }
 
+      // If staff provided a manual card number, resolve and validate it
+      const rawCardNumber = cardNumber || manualCardNumber || cardNumberSuffix;
+      let preAssignedCardNumber = null;
+      if (rawCardNumber) {
+        preAssignedCardNumber = await resolveCardNumber(plan.planType, rawCardNumber);
+      }
+
       amount = Number(plan.price);
       originalPrice = amount;
       cardDetails = {
         planName: plan.name,
         planType: plan.planType,
         validityInDays: plan.validityInDays,
-        discountPercentage: plan.discountPercentage
+        discountPercentage: plan.discountPercentage,
+        ...(preAssignedCardNumber ? { cardNumber: preAssignedCardNumber } : {})
       };
       orderNote = `Purchase of ${plan.name} (${plan.planType}) Health Card`;
     } else if (entityType === 'SERVICE') {
@@ -290,7 +302,7 @@ class PaymentService {
           if (plan) {
             const purchasedAt = paymentDoc.fulfilledAt || new Date();
             const expiresAt = new Date(purchasedAt.getTime() + plan.validityInDays * 24 * 60 * 60 * 1000);
-            const cardNumber = paymentDoc.cardDetails?.cardNumber || `MC-${plan.planType.substring(0, 3)}-${Date.now().toString().slice(-6)}`;
+            const cardNumber = paymentDoc.cardDetails?.cardNumber || await generateUniqueCardNumber(plan.planType);
 
             customerProfile.hasCard = true;
             customerProfile.activeCard = {
@@ -332,7 +344,7 @@ class PaymentService {
 
         const purchasedAt = new Date();
         const expiresAt = new Date(purchasedAt.getTime() + plan.validityInDays * 24 * 60 * 60 * 1000);
-        const cardNumber = `MC-${plan.planType.substring(0, 3)}-${Date.now().toString().slice(-6)}`;
+        const cardNumber = paymentDoc.cardDetails?.cardNumber || await generateUniqueCardNumber(plan.planType);
         const effectivePaymentMethod = paymentDoc.paymentMethod || 'ONLINE';
 
         customerProfile.hasCard = true;

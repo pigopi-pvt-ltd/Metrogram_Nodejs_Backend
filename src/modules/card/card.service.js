@@ -6,6 +6,7 @@ import receiptService from '../receipt/receipt.service.js';
 import Payment from '../payment/payment.model.js';
 import paymentService from '../payment/payment.service.js';
 import customerService from '../customer/customer.service.js';
+import { generateUniqueCardNumber, resolveCardNumber } from './cardNumber.helper.js';
 
 class CardService {
   /**
@@ -204,7 +205,7 @@ class CardService {
 
     const purchasedAt = new Date();
     const expiresAt = new Date(purchasedAt.getTime() + plan.validityInDays * 24 * 60 * 60 * 1000);
-    const cardNumber = `MC-${plan.planType.substring(0, 3)}-${Date.now().toString().slice(-6)}`;
+    const cardNumber = await generateUniqueCardNumber(plan.planType);
 
     const activeCardData = {
       cardPlan: plan._id,
@@ -274,7 +275,10 @@ class CardService {
     paymentMethod = 'CASH',
     paymentStatus = 'COMPLETED',
     returnUrl,
-    notes = ''
+    notes = '',
+    cardNumber = '',
+    manualCardNumber = '',
+    cardNumberSuffix = ''
   }) {
     // Role-based customer ownership check
     const staffUser = requestingUser || (await User.findById(assignedById));
@@ -331,6 +335,10 @@ class CardService {
       throw err;
     }
 
+    // Resolve card number: manually inserted by staff (or unique random if omitted)
+    const rawManualNumber = cardNumber || manualCardNumber || cardNumberSuffix;
+    const resolvedCardNumber = await resolveCardNumber(plan.planType, rawManualNumber);
+
     const normalizedMethod = (paymentMethod || 'CASH').toUpperCase().trim();
     const isCash = normalizedMethod === 'CASH';
 
@@ -340,7 +348,7 @@ class CardService {
     if (isCash) {
       const purchasedAt = new Date();
       const expiresAt = new Date(purchasedAt.getTime() + plan.validityInDays * 24 * 60 * 60 * 1000);
-      const cardNumber = `MC-${plan.planType.substring(0, 3)}-${Date.now().toString().slice(-6)}`;
+      const cardNumber = resolvedCardNumber;
 
       customerProfile.hasCard = true;
       customerProfile.activeCard = {
@@ -452,6 +460,7 @@ class CardService {
       assignedById,
       entityType: 'CARD',
       entityId: plan._id,
+      cardNumber: resolvedCardNumber,
       returnUrl,
       customNotes: notes || `Face-to-face card assignment (${normalizedMethod}) initiated by staff`
     });
@@ -459,6 +468,7 @@ class CardService {
     return {
       requiresPayment: true,
       paymentMethod: normalizedMethod,
+      cardNumber: resolvedCardNumber,
       message: 'Cashfree payment session created. Complete payment via payment gateway to activate membership card.',
       paymentOrder: {
         orderId: orderData.orderId,
@@ -467,6 +477,7 @@ class CardService {
         amount: orderData.amount,
         currency: orderData.currency,
         customerDetails: orderData.customerDetails,
+        cardNumber: resolvedCardNumber,
         cardPlan: {
           _id: plan._id,
           name: plan.name,

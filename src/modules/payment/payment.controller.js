@@ -29,7 +29,10 @@ class PaymentController {
         returnUrl,
         notes,
         targetUserId,
-        customerUserId
+        customerUserId,
+        cardNumber,
+        manualCardNumber,
+        cardNumberSuffix
       } = req.body;
 
       if (!entityType || !entityId) {
@@ -60,6 +63,7 @@ class PaymentController {
         assignedById,
         entityType: entityType.toUpperCase().trim(),
         entityId,
+        cardNumber: cardNumber || manualCardNumber || cardNumberSuffix,
         bookingDetails,
         returnUrl,
         customNotes: notes

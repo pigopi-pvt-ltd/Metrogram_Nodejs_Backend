@@ -6,6 +6,7 @@ import Service from '../service/service.model.js';
 import CardPlan from '../card/cardPlan.model.js';
 import Payment from '../payment/payment.model.js';
 import ServiceBooking from '../service/serviceBooking.model.js';
+import FranchiseEnquiry from '../franchise/franchise.model.js';
 import customerService from '../customer/customer.service.js';
 import { ROLES } from '../../constants/roles.js';
 
@@ -31,8 +32,11 @@ class DashboardService {
         revenueAggregate,
         totalDistributedCards,
         activeCardsCount,
+        totalFranchiseEnquiries,
+        pendingFranchiseEnquiries,
         recentUsers,
-        recentPayments
+        recentPayments,
+        recentFranchiseEnquiries
       ] = await Promise.all([
         User.countDocuments(),
         User.countDocuments({ role: ROLES.MANAGER }),
@@ -55,6 +59,8 @@ class DashboardService {
           'activeCard.expiresAt': { $gte: new Date() },
           'activeCard.status': { $in: ['ACTIVE', 'SUCCESS'] }
         }),
+        FranchiseEnquiry.countDocuments(),
+        FranchiseEnquiry.countDocuments({ status: 'PENDING' }),
         User.find()
           .populate('profile')
           .populate('createdBy', 'firstName lastName email role')
@@ -63,6 +69,9 @@ class DashboardService {
         Payment.find()
           .populate('user', 'firstName lastName email')
           .populate('entityId')
+          .sort({ createdAt: -1 })
+          .limit(5),
+        FranchiseEnquiry.find()
           .sort({ createdAt: -1 })
           .limit(5)
       ]);
@@ -93,10 +102,13 @@ class DashboardService {
           activeCardsCount,
           totalBookings,
           paidPaymentsCount,
-          totalRevenue
+          totalRevenue,
+          totalFranchiseEnquiries,
+          pendingFranchiseEnquiries
         },
         recentActivity: recentUsers,
-        recentPayments
+        recentPayments,
+        recentFranchiseEnquiries
       };
     }
 

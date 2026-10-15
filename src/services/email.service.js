@@ -398,6 +398,192 @@ class EmailService {
 
     return await transporter.sendMail(mailOptions);
   }
+
+  /**
+   * Send notification to Super Admin when a new franchise enquiry is submitted
+   * @param {Object} options
+   * @param {string|string[]} options.to - Super admin email address(es)
+   * @param {Object} options.enquiry - Enquiry details
+   */
+  async sendFranchiseEnquiryAlertToSuperAdmin({ to, enquiry }) {
+    if (!to || (Array.isArray(to) && to.length === 0)) {
+      console.warn('[EmailService] sendFranchiseEnquiryAlertToSuperAdmin called without recipient email. Skipping.');
+      return null;
+    }
+
+    const transporter = this.getTransporter();
+    const sender = process.env.EMAIL_ID_SENDER || 'info@metrogram.co.in';
+
+    const recipientList = Array.isArray(to) ? to.join(', ') : to;
+    const applicantName = enquiry.fullName || enquiry.name || 'Potential Franchise Partner';
+    const location = enquiry.location || 'N/A';
+    const mobile = enquiry.phone || enquiry.mobile || 'N/A';
+    const email = enquiry.email || 'N/A';
+    const occupation = enquiry.currentOccupation || 'N/A';
+    const addressWithCode = enquiry.addressWithCode || (enquiry.address ? `${enquiry.address}${enquiry.pincode ? ` - ${enquiry.pincode}` : ''}` : 'N/A');
+    const enquiryCode = enquiry.enquiryCode || 'N/A';
+    const dateFormatted = enquiry.createdAt ? new Date(enquiry.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+
+    const subject = `New Franchise Enquiry: ${applicantName} (${location}) - ${enquiryCode}`;
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 8px; background-color: #ffffff;">
+        <div style="text-align: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #0f766e;">
+          <h2 style="color: #0f766e; margin: 0; font-size: 24px; letter-spacing: 0.5px;">METROGRAM FRANCHISE</h2>
+          <p style="color: #64748b; margin: 4px 0 0 0; font-size: 13px;">New Partner Enquiry Alert for Super Admin</p>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <span style="background-color: #fef3c7; color: #92400e; font-size: 12px; font-weight: bold; padding: 4px 10px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.5px;">
+            Action Required
+          </span>
+        </div>
+
+        <p style="font-size: 16px; color: #1e293b; margin-bottom: 12px;">Hello <strong>Super Admin</strong>,</p>
+        <p style="font-size: 14px; color: #334155; line-height: 1.6; margin-bottom: 20px;">
+          A new franchise enquiry has been submitted on the MetroGram portal. Here are the applicant's submitted details:
+        </p>
+
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 18px; margin: 20px 0;">
+          <h3 style="font-size: 14px; color: #0f766e; margin: 0 0 14px 0; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
+            Enquiry Details (${enquiryCode})
+          </h3>
+          <table style="width: 100%; font-size: 13px; color: #334155; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 7px 0; color: #64748b; width: 38%;">Applicant Name:</td>
+              <td style="padding: 7px 0; font-weight: bold; color: #0f172a;">${applicantName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 7px 0; color: #64748b;">Email Address:</td>
+              <td style="padding: 7px 0; font-weight: 500;">
+                <a href="mailto:${email}" style="color: #0f766e; text-decoration: none;">${email}</a>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 7px 0; color: #64748b;">Mobile Number:</td>
+              <td style="padding: 7px 0; font-weight: 500;">
+                <a href="tel:${mobile}" style="color: #0f766e; text-decoration: none;">${mobile}</a>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 7px 0; color: #64748b;">Franchise Location:</td>
+              <td style="padding: 7px 0; font-weight: bold; color: #0f766e;">${location}</td>
+            </tr>
+            <tr>
+              <td style="padding: 7px 0; color: #64748b;">Current Occupation:</td>
+              <td style="padding: 7px 0; font-weight: 500;">${occupation}</td>
+            </tr>
+            <tr>
+              <td style="padding: 7px 0; color: #64748b; vertical-align: top;">Address with Code:</td>
+              <td style="padding: 7px 0; font-weight: 500; color: #1e293b; line-height: 1.4;">${addressWithCode}</td>
+            </tr>
+            ${enquiry.notes ? `
+            <tr>
+              <td style="padding: 7px 0; color: #64748b; vertical-align: top;">Applicant Notes:</td>
+              <td style="padding: 7px 0; color: #334155; line-height: 1.4;">${enquiry.notes}</td>
+            </tr>
+            ` : ''}
+            <tr>
+              <td style="padding: 7px 0; color: #64748b;">Submitted At:</td>
+              <td style="padding: 7px 0; color: #64748b;">${dateFormatted} (IST)</td>
+            </tr>
+          </table>
+        </div>
+
+        <p style="font-size: 13px; color: #475569; line-height: 1.6; margin-bottom: 20px;">
+          You can log in to your <strong>Super Admin Portal</strong> to view all details, update status, add follow-up remarks, and contact the applicant directly.
+        </p>
+
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0 14px 0;" />
+        <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">
+          &copy; ${new Date().getFullYear()} MetroGram. All rights reserved.<br/>
+          94 sharda niwas, Braham asthani road pillar -68 Igims patna -800014
+        </p>
+      </div>
+    `;
+
+    const mailOptions = {
+      from: `"MetroGram Franchise Alerts" <${sender}>`,
+      to: recipientList,
+      subject,
+      html
+    };
+
+    return await transporter.sendMail(mailOptions);
+  }
+
+  /**
+   * Send acknowledgment email to applicant who submitted a franchise enquiry
+   * @param {Object} options
+   * @param {string} options.to - Applicant email
+   * @param {string} options.name - Applicant name
+   * @param {string} options.enquiryCode - Reference code
+   * @param {string} options.location - Target location
+   */
+  async sendFranchiseEnquiryConfirmationToApplicant({ to, name, enquiryCode, location }) {
+    if (!to) {
+      console.warn('[EmailService] sendFranchiseEnquiryConfirmationToApplicant called without recipient email. Skipping.');
+      return null;
+    }
+
+    const transporter = this.getTransporter();
+    const sender = process.env.EMAIL_ID_SENDER || 'info@metrogram.co.in';
+
+    const subject = `Franchise Enquiry Received (${enquiryCode}) - MetroGram Healthcare`;
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 8px; background-color: #ffffff;">
+        <div style="text-align: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #0f766e;">
+          <h2 style="color: #0f766e; margin: 0; font-size: 24px; letter-spacing: 0.5px;">METROGRAM HEALTHCARE</h2>
+          <p style="color: #64748b; margin: 4px 0 0 0; font-size: 13px;">Diagnostic & Healthcare Partner Network</p>
+        </div>
+
+        <p style="font-size: 16px; color: #1e293b; margin-bottom: 12px;">Hello <strong>${name || 'Valued Partner'}</strong>,</p>
+        <p style="font-size: 14px; color: #334155; line-height: 1.6; margin-bottom: 20px;">
+          Thank you for your interest in partnering with <strong>MetroGram</strong> for our franchise program! We have successfully received your enquiry for <strong>${location}</strong>.
+        </p>
+
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 18px; margin: 20px 0;">
+          <h3 style="font-size: 14px; color: #0f766e; margin: 0 0 12px 0; text-transform: uppercase; letter-spacing: 0.5px;">Enquiry Summary</h3>
+          <table style="width: 100%; font-size: 13px; color: #334155; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;">Reference Number:</td>
+              <td style="padding: 6px 0; font-weight: bold; text-align: right; font-family: monospace; color: #0f766e;">${enquiryCode}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;">Target Location:</td>
+              <td style="padding: 6px 0; font-weight: bold; text-align: right;">${location}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;">Status:</td>
+              <td style="padding: 6px 0; font-weight: bold; text-align: right; color: #0284c7;">PENDING REVIEW</td>
+            </tr>
+          </table>
+        </div>
+
+        <p style="font-size: 13px; color: #475569; line-height: 1.6; margin-bottom: 20px;">
+          Our business development and expansion team will review your proposal and get in touch with you at your provided contact details to discuss franchise opportunities and next steps.
+        </p>
+
+        <p style="font-size: 13px; color: #334155; margin-bottom: 4px;">
+          For any inquiries regarding our franchise model, contact us at <a href="mailto:info@metrogram.co.in" style="color: #0f766e; text-decoration: none;">info@metrogram.co.in</a> or call <strong>+91 9798144621</strong>.
+        </p>
+
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0 14px 0;" />
+        <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">
+          &copy; ${new Date().getFullYear()} MetroGram. All rights reserved.<br/>
+          94 sharda niwas, Braham asthani road pillar -68 Igims patna -800014
+        </p>
+      </div>
+    `;
+
+    const mailOptions = {
+      from: `"MetroGram Franchise Team" <${sender}>`,
+      to,
+      subject,
+      html
+    };
+
+    return await transporter.sendMail(mailOptions);
+  }
 }
 
 export default new EmailService();

@@ -153,8 +153,8 @@ Role permissions are defined in `src/constants/roles.js`:
 - `PUT /api/cards/plans/:id` — Update card plan (`SUPER_ADMIN` only).
 - `PATCH /api/cards/plans/:id/status` — Toggle card plan status (`SUPER_ADMIN` only).
 - `DELETE /api/cards/plans/:id` — Delete card plan (`SUPER_ADMIN` only).
-- `POST /api/cards/purchase` — Direct card assignment / mock purchase.
-- `POST /api/cards/assign` — Assign card plan to customer face-to-face (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`). Accepts `paymentMethod` (`CASH` for instant offline assignment without payment gateway; or `ONLINE` / `UPI` / `CARD` to generate a Cashfree payment session for the card price).
+- `POST /api/cards/purchase` — Direct customer self-purchase (auto-generates unique random card number `MG-<TYPE>-<random_number>`).
+- `POST /api/cards/assign` — Assign card plan to customer face-to-face (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`). Accepts `paymentMethod` (`CASH` for instant offline assignment without payment gateway; or `ONLINE` / `UPI` / `CARD` to generate a Cashfree payment session for the card price), and optional `cardNumber` (staff manually inserts the number after `MG-YEA-` or the full string, formatted as `MG-<TYPE>-<manual_number>`, with uniqueness verification; auto-generates random if omitted).
 - `GET /api/cards/my-card` — View logged-in customer's active card details and validity.
 - `GET /api/cards/customer/:userId` — View specific customer's card details (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
 - `GET /api/cards/distributions` (or `/api/cards/distributed`) — View all cards distributed among customers with distribution dates, renewal dates, days remaining, renewal status, customer info, and filters (`status`, `search`, `planType`, `planId`, `distributedFrom`, `distributedTo`, `renewalFrom`, `renewalTo`, `expiringWithinDays`, `page`, `limit`) (`SUPER_ADMIN`, `MANAGER`).
@@ -257,6 +257,14 @@ Role permissions are defined in `src/constants/roles.js`:
 - `PATCH /api/users/:id/status` — Toggle user active/inactive status (`isActive: true/false`).
 - `DELETE /api/users/:id` — Delete user and linked profile document (enforces hierarchy permissions).
 
+### 🤝 14. Franchise Enquiries (`/api/franchise` or `/api/franchises`)
+- `POST /api/franchise` or `POST /api/franchise/enquiry` — Public franchise enquiry submission with applicant fields (`name`/`fullName`, `email`, `mobile`/`phone`, `location`, `currentOccupation`, `address`, `pincode`/`code` or `addressWithCode`, optional `notes`). Automatically alerts Super Admin via email and sends confirmation to applicant.
+- `GET /api/franchise` or `GET /api/franchise/enquiries` — List all franchise enquiries with filters (`status`, `search`, `location`, date range, pagination `page`, `limit`) (`SUPER_ADMIN` only).
+- `GET /api/franchise/stats` or `GET /api/franchise/enquiries/stats` — Franchise KPI metrics (total, pending, contacted, in review, approved, rejected, today's count, recent enquiries) (`SUPER_ADMIN` only).
+- `GET /api/franchise/:id` or `GET /api/franchise/enquiries/:id` — View details of a single franchise enquiry (`SUPER_ADMIN` only).
+- `PATCH /api/franchise/:id/status` or `PATCH /api/franchise/enquiries/:id/status` — Update enquiry review status (`PENDING`, `CONTACTED`, `IN_REVIEW`, `APPROVED`, `REJECTED`) and admin follow-up notes (`SUPER_ADMIN` only).
+- `DELETE /api/franchise/:id` or `DELETE /api/franchise/enquiries/:id` — Delete a franchise enquiry (`SUPER_ADMIN` only).
+
 ---
 
 ## 🗂️ Project Directory Map
@@ -291,7 +299,8 @@ Role permissions are defined in `src/constants/roles.js`:
     │   ├── card/         # Health card plans & customer subscriptions
     │   ├── payment/      # Cashfree payment gateway & transactions
     │   ├── receipt/      # PDF receipts & email invoices
-    │   └── career/       # Job openings & applicant resume submissions
+    │   ├── career/       # Job openings & applicant resume submissions
+    │   └── franchise/    # Franchise inquiries, lead management & super admin notifications
     ├── seed/
     │   ├── seedAll.js    # Comprehensive seed script
     │   └── seedSuperAdmin.js # Seed script for default super admin
