@@ -1,17 +1,60 @@
 import crypto from 'crypto';
+import mongoose from 'mongoose';
 import Service from './service.model.js';
 import ServiceBooking from './serviceBooking.model.js';
+import Category from '../category/category.model.js';
 import { ROLES } from '../../constants/roles.js';
 import emailService from '../../services/email.service.js';
 import { uploadBufferToCloudinary, deleteFromCloudinary } from '../../config/cloudinary.js';
 
 class ServiceService {
   /**
+   * Resolve category input (ObjectId, slug, or name) to a valid Category ObjectId
+   */
+  async resolveCategoryId(categoryInput) {
+    if (!categoryInput) {
+      // Default to Pathology if not specified
+      const defaultCat = await Category.findOne({ slug: 'pathology' });
+      return defaultCat ? defaultCat._id : null;
+    }
+
+    let cat = null;
+    if (mongoose.Types.ObjectId.isValid(categoryInput)) {
+      cat = await Category.findById(categoryInput);
+    }
+
+    if (!cat) {
+      cat = await Category.findOne({
+        $or: [
+          { slug: String(categoryInput).toLowerCase().trim() },
+          { name: { $regex: new RegExp(`^${String(categoryInput).trim()}$`, 'i') } }
+        ]
+      });
+    }
+
+    if (!cat) {
+      const err = new Error(`Category "${categoryInput}" not found`);
+      err.statusCode = 400;
+      throw err;
+    }
+
+    return cat._id;
+  }
+
+  /**
    * Create a new diagnostic / lab test service
    */
   async createService(serviceData, creatorId) {
+    const categoryId = await this.resolveCategoryId(serviceData.category);
+    if (!categoryId) {
+      const err = new Error('Test category is required');
+      err.statusCode = 400;
+      throw err;
+    }
+
     const service = new Service({
       ...serviceData,
+      category: categoryId,
       createdBy: creatorId
     });
 
@@ -27,6 +70,10 @@ class ServiceService {
       const err = new Error('Diagnostic test service not found');
       err.statusCode = 404;
       throw err;
+    }
+
+    if (updateData.category !== undefined) {
+      updateData.category = await this.resolveCategoryId(updateData.category);
     }
 
     Object.assign(service, updateData);
@@ -71,10 +118,9 @@ class ServiceService {
    * Get single service by ID
    */
   async getServiceById(serviceId) {
-    const service = await Service.findById(serviceId).populate(
-      'createdBy',
-      'firstName lastName email role'
-    );
+    const service = await Service.findById(serviceId)
+      .populate('category', 'name slug description isActive')
+      .populate('createdBy', 'firstName lastName email role');
     if (!service) {
       const err = new Error('Diagnostic test service not found');
       err.statusCode = 404;
@@ -87,6 +133,7 @@ class ServiceService {
    * Query all services with filtering, search, and pagination
    */
   async getAllServices({
+    category,
     testType,
     search,
     requiresFasting,
@@ -101,6 +148,24 @@ class ServiceService {
 
     if (isActive !== undefined && isActive !== '') {
       filter.isActive = isActive === 'true' || isActive === true;
+    }
+
+    if (category) {
+      if (mongoose.Types.ObjectId.isValid(category)) {
+        filter.category = category;
+      } else {
+        const cat = await Category.findOne({
+          $or: [
+            { slug: String(category).toLowerCase().trim() },
+            { name: { $regex: new RegExp(`^${String(category).trim()}$`, 'i') } }
+          ]
+        });
+        if (cat) {
+          filter.category = cat._id;
+        } else {
+          filter.category = new mongoose.Types.ObjectId(); // matches nothing
+        }
+      }
     }
 
     if (testType) {
@@ -134,6 +199,7 @@ class ServiceService {
 
     const [services, total] = await Promise.all([
       Service.find(filter)
+        .populate('category', 'name slug description isActive')
         .populate('createdBy', 'firstName lastName email role')
         .sort(sortObj)
         .skip(skip)
@@ -154,10 +220,14 @@ class ServiceService {
    * Get distinct categories / test types for filters
    */
   async getCategories() {
-    const categories = await Service.distinct('testType', { isActive: true });
-    const sampleTypes = await Service.distinct('sampleType', { isActive: true });
+    const [categories, testTypes, sampleTypes] = await Promise.all([
+      Category.find({ isActive: true }).select('name slug description'),
+      Service.distinct('testType', { isActive: true }),
+      Service.distinct('sampleType', { isActive: true })
+    ]);
     return {
-      testTypes: categories,
+      categories,
+      testTypes,
       sampleTypes
     };
   }

@@ -138,13 +138,21 @@ Role permissions are defined in `src/constants/roles.js`:
 ## 📡 Complete API Endpoints Map
 
 ### 🩺 1. Medical Services / Diagnostic Tests (`/api/services`)
-- `GET /api/services` — List diagnostic tests with filters (`testType`, `search`, `requiresFasting`, `isActive`, `page`, `limit`) [Public for Landing Page].
+- `GET /api/services` — List diagnostic tests with filters (`category`, `testType`, `search`, `requiresFasting`, `isActive`, `page`, `limit`) [Public for Landing Page].
 - `GET /api/services/categories` — Get unique test types/categories and sample types [Public].
 - `GET /api/services/:id` — View details of single diagnostic test [Public].
-- `POST /api/services` — Create new diagnostic test (`SUPER_ADMIN` only).
+- `POST /api/services` — Create new diagnostic test (`SUPER_ADMIN` only, dropdown category selection: Pathology, Radiology, Physiotherapy, etc.).
 - `PUT /api/services/:id` — Update diagnostic test (`SUPER_ADMIN` only).
 - `PATCH /api/services/:id/status` — Toggle test active/inactive status (`SUPER_ADMIN` only).
 - `DELETE /api/services/:id` — Delete diagnostic test (`SUPER_ADMIN` only).
+
+### 🏷️ 1.5 Diagnostic Test Categories (`/api/categories`)
+- `GET /api/categories` — List all active categories (`Pathology`, `Radiology`, `Physiotherapy`) with optional search, pagination, and filters [Public for dropdowns & landing page].
+- `GET /api/categories/:id` — View single category details by ID or slug [Public].
+- `POST /api/categories` — Create new category (`SUPER_ADMIN` only).
+- `PUT /api/categories/:id` — Update category details (`SUPER_ADMIN` only).
+- `PATCH /api/categories/:id/status` — Toggle category active status (`SUPER_ADMIN` only).
+- `DELETE /api/categories/:id` — Delete category (safely blocked if any tests are assigned to it) (`SUPER_ADMIN` only).
 
 ### 💳 2. Membership Health Cards (`/api/cards`)
 - `GET /api/cards/plans` — List active card plans (`MONTHLY`, `YEARLY`, `QUARTERLY`) [Public for Landing Page].
@@ -296,6 +304,7 @@ Role permissions are defined in `src/constants/roles.js`:
     │   ├── employee/     # Employee profiles & operations
     │   ├── customer/     # Customer profiles & operations
     │   ├── service/      # Diagnostic tests & lab services
+    │   ├── category/     # Diagnostic test categories (Pathology, Radiology, Physiotherapy)
     │   ├── card/         # Health card plans & customer subscriptions
     │   ├── payment/      # Cashfree payment gateway & transactions
     │   ├── receipt/      # PDF receipts & email invoices

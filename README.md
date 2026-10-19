@@ -51,6 +51,11 @@ src/
 │   │   ├── service.controller.js
 │   │   ├── service.service.js
 │   │   └── service.routes.js
+│   ├── category/
+│   │   ├── category.model.js
+│   │   ├── category.controller.js
+│   │   ├── category.service.js
+│   │   └── category.routes.js
 │   ├── card/
 │   │   ├── cardPlan.model.js
 │   │   ├── card.controller.js
@@ -84,8 +89,15 @@ src/
   - **`Employee` (`modules/employee/employee.model.js`)**: `user`, `employeeCode`, `designation`, `department`, `manager`
   - **`Customer` (`modules/customer/customer.model.js`)**: `user`, `customerCode`, `membershipType`, `aadharNumber`, `panNumber`, `hasCard`, `activeCard`, `cardHistory`, `address`, `loyaltyPoints`
 
+- **Diagnostic Test Categories (`modules/category/category.model.js`)**:
+  - `name`: Category name (e.g. "Pathology", "Radiology", "Physiotherapy")
+  - `slug`: URL and query friendly identifier (e.g. `pathology`, `radiology`, `physiotherapy`)
+  - `description`: Detailed category scope
+  - `isActive`: Boolean flag
+
 - **Diagnostic Test / Medical Services (`modules/service/service.model.js`)**:
   - `testName` (e.g. "Complete Blood Count (CBC)")
+  - `category` (`ObjectId` ref `Category`: `Pathology`, `Radiology`, `Physiotherapy`)
   - `description`
   - `testType` (e.g. "Blood Test", "Biochemistry", "Urine Test")
   - `reportTime` (e.g. "24 Hours", "Same Day")

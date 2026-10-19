@@ -5,6 +5,8 @@ import superAdminService from '../modules/superAdmin/superAdmin.service.js';
 import managerService from '../modules/manager/manager.service.js';
 import employeeService from '../modules/employee/employee.service.js';
 import customerService from '../modules/customer/customer.service.js';
+import categoryService from '../modules/category/category.service.js';
+import Category from '../modules/category/category.model.js';
 import serviceService from '../modules/service/service.service.js';
 import Service from '../modules/service/service.model.js';
 import cardService from '../modules/card/card.service.js';
@@ -46,8 +48,25 @@ const seedAll = async () => {
       console.log(`   ℹ️ Super Admin already exists: ${superAdmin.email}`);
     }
 
-    // 2. Seed Diagnostic Tests / Services (Super Admin Configured)
-    console.log('\n2️⃣ Seeding Diagnostic Lab Tests / Services...');
+    // 2. Seed Test Categories (Pathology, Radiology, Physiotherapy)
+    console.log('\n2️⃣ Seeding Test Categories (Pathology, Radiology, Physiotherapy)...');
+    const seededCategories = await categoryService.seedDefaultCategories(superAdmin._id);
+    const pathologyCategory = seededCategories.find((c) => c.slug === 'pathology') || seededCategories[0];
+    for (const cat of seededCategories) {
+      console.log(`   ✅ Category: ${cat.name} (${cat.slug})`);
+    }
+
+    // Ensure all existing tests in DB without category get assigned to Pathology
+    const updateExistingTestsResult = await Service.updateMany(
+      { $or: [{ category: { $exists: false } }, { category: null }] },
+      { $set: { category: pathologyCategory._id } }
+    );
+    if (updateExistingTestsResult.modifiedCount > 0) {
+      console.log(`   🔄 Assigned Pathology category to ${updateExistingTestsResult.modifiedCount} existing tests in database.`);
+    }
+
+    // 3. Seed Diagnostic Tests / Services (Super Admin Configured)
+    console.log('\n3️⃣ Seeding Diagnostic Lab Tests / Services (Pathology)...');
     const sampleServices = [
       {
         testName: 'Complete Blood Count (CBC)',
@@ -224,15 +243,21 @@ const seedAll = async () => {
     for (const serv of sampleServices) {
       const existingService = await Service.findOne({ testName: serv.testName });
       if (!existingService) {
-        await serviceService.createService(serv, superAdmin._id);
-        console.log(`   ✅ Test Created: ${serv.testName} (₹${serv.price} -> Card Discount: ₹${serv.discountedPrice})`);
+        await serviceService.createService({ ...serv, category: pathologyCategory._id }, superAdmin._id);
+        console.log(`   ✅ Test Created: ${serv.testName} (Category: Pathology, ₹${serv.price} -> Card Discount: ₹${serv.discountedPrice})`);
       } else {
-        console.log(`   ℹ️ Test already exists: ${serv.testName}`);
+        if (!existingService.category) {
+          existingService.category = pathologyCategory._id;
+          await existingService.save();
+          console.log(`   ℹ️ Test already exists: ${serv.testName} (Updated category to Pathology)`);
+        } else {
+          console.log(`   ℹ️ Test already exists: ${serv.testName}`);
+        }
       }
     }
 
-    // 3. Seed Membership Card Plans (Super Admin Configured)
-    console.log('\n3️⃣ Seeding Membership Card Plans...');
+    // 4. Seed Membership Card Plans (Super Admin Configured)
+    console.log('\n4️⃣ Seeding Membership Card Plans...');
     const cardPlans = [
       {
         name: 'MetroCare Annual Health Card',
@@ -280,8 +305,8 @@ const seedAll = async () => {
       }
     }
 
-    // 4. Seed Managers
-    console.log('\n4️⃣ Seeding Managers...');
+    // 5. Seed Managers
+    console.log('\n5️⃣ Seeding Managers...');
     const managersData = [
       {
         userData: {
@@ -333,8 +358,8 @@ const seedAll = async () => {
     const opsManager = seededManagers[0];
     const salesManager = seededManagers[1];
 
-    // 5. Seed Employees
-    console.log('\n5️⃣ Seeding Employees...');
+    // 6. Seed Employees
+    console.log('\n6️⃣ Seeding Employees...');
     const employeesData = [
       {
         userData: {
@@ -409,8 +434,8 @@ const seedAll = async () => {
 
     const firstEmployee = seededEmployees[0];
 
-    // 6. Seed Customers (with Aadhar, PAN, Address, and Card Subscriptions)
-    console.log('\n6️⃣ Seeding Customers (with Aadhar, PAN & Card Info)...');
+    // 7. Seed Customers (with Aadhar, PAN, Address, and Card Subscriptions)
+    console.log('\n7️⃣ Seeding Customers (with Aadhar, PAN & Card Info)...');
     const customersData = [
       {
         userData: {
@@ -537,8 +562,8 @@ const seedAll = async () => {
       }
     }
 
-    // 7. Seed Career Job Openings (Super Admin Configured)
-    console.log('\n7️⃣ Seeding Career Job Openings...');
+    // 8. Seed Career Job Openings (Super Admin Configured)
+    console.log('\n8️⃣ Seeding Career Job Openings...');
     const sampleJobs = [
       {
         title: 'Senior Consultant Pathologist',

@@ -11,6 +11,8 @@ class ServiceController {
       const {
         testName,
         description,
+        category,
+        categoryId,
         testType,
         reportTime,
         sampleType,
@@ -25,10 +27,12 @@ class ServiceController {
         isActive
       } = req.body;
 
-      if (!testName || !description || !testType || !reportTime || !sampleType || price === undefined || discountedPrice === undefined) {
+      const selectedCategory = category || categoryId;
+
+      if (!testName || !description || !selectedCategory || !testType || !reportTime || !sampleType || price === undefined || discountedPrice === undefined) {
         return res.status(400).json({
           success: false,
-          message: 'Missing required fields: testName, description, testType, reportTime, sampleType, price, and discountedPrice are required'
+          message: 'Missing required fields: testName, description, category, testType, reportTime, sampleType, price, and discountedPrice are required'
         });
       }
 
@@ -46,6 +50,7 @@ class ServiceController {
         {
           testName,
           description,
+          category: selectedCategory,
           testType,
           reportTime,
           sampleType,
@@ -83,6 +88,11 @@ class ServiceController {
   async update(req, res, next) {
     try {
       const updateData = { ...req.body };
+
+      if (updateData.categoryId !== undefined && updateData.category === undefined) {
+        updateData.category = updateData.categoryId;
+        delete updateData.categoryId;
+      }
 
       if (updateData.faq !== undefined && updateData.faqs === undefined) {
         updateData.faqs = updateData.faq;

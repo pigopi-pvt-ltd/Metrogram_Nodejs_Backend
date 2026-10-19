@@ -13,6 +13,12 @@ const serviceSchema = new mongoose.Schema(
       required: [true, 'Test description is required'],
       trim: true
     },
+    category: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Category',
+      required: [true, 'Category is required'],
+      index: true
+    },
     testType: {
       type: String,
       required: [true, 'Test type/category is required'],
