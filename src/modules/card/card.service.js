@@ -583,26 +583,37 @@ class CardService {
       status: effectiveStatus,
       assignedBy: cardData.assignedBy || null,
       paymentStatus: cardData.paymentStatus || 'COMPLETED',
+      paymentMethod: cardData.paymentMethod || 'ONLINE',
+      paymentMode: (cardData.paymentMethod || 'ONLINE').toUpperCase() === 'CASH' ? 'CASH' : 'PAYMENT_GATEWAY',
       isHistorical
     };
   }
 
   /**
-   * Helper to retrieve quick summary counts for distributed cards
+   * Helper to retrieve quick summary counts for distributed cards including cash and payment gateway breakdowns
    */
-  async getCardDistributionSummaryCounts() {
+  async getCardDistributionSummaryCounts(baseFilter = {}) {
     const now = new Date();
     const next7Days = new Date(now.getTime() + 7 * 86400000);
     const next30Days = new Date(now.getTime() + 30 * 86400000);
 
-    const [totalDistributed, activeCards, expiredCards, expiringWithin7Days, expiringWithin30Days] = await Promise.all([
-      Customer.countDocuments({ 'activeCard.cardNumber': { $ne: null } }),
+    const [
+      totalDistributed,
+      activeCards,
+      expiredCards,
+      expiringWithin7Days,
+      expiringWithin30Days,
+      paymentAgg
+    ] = await Promise.all([
+      Customer.countDocuments({ ...baseFilter, 'activeCard.cardNumber': { $ne: null } }),
       Customer.countDocuments({
+        ...baseFilter,
         'activeCard.cardNumber': { $ne: null },
         'activeCard.expiresAt': { $gte: now },
         'activeCard.status': { $in: ['ACTIVE', 'SUCCESS'] }
       }),
       Customer.countDocuments({
+        ...baseFilter,
         'activeCard.cardNumber': { $ne: null },
         $or: [
           { 'activeCard.expiresAt': { $lt: now } },
@@ -610,21 +621,75 @@ class CardService {
         ]
       }),
       Customer.countDocuments({
+        ...baseFilter,
         'activeCard.cardNumber': { $ne: null },
         'activeCard.expiresAt': { $gte: now, $lte: next7Days }
       }),
       Customer.countDocuments({
+        ...baseFilter,
         'activeCard.cardNumber': { $ne: null },
         'activeCard.expiresAt': { $gte: now, $lte: next30Days }
-      })
+      }),
+      Customer.aggregate([
+        {
+          $match: {
+            ...baseFilter,
+            'activeCard.cardNumber': { $ne: null }
+          }
+        },
+        {
+          $group: {
+            _id: {
+              $cond: [
+                {
+                  $in: [
+                    { $toUpper: { $ifNull: ['$activeCard.paymentMethod', 'ONLINE'] } },
+                    ['CASH']
+                  ]
+                },
+                'CASH',
+                'ONLINE'
+              ]
+            },
+            count: { $sum: 1 },
+            totalAmount: { $sum: { $ifNull: ['$activeCard.price', 0] } }
+          }
+        }
+      ])
     ]);
+
+    const cashStats = paymentAgg.find(p => p._id === 'CASH') || { count: 0, totalAmount: 0 };
+    const onlineStats = paymentAgg.find(p => p._id === 'ONLINE') || { count: 0, totalAmount: 0 };
+    const totalRevenue = cashStats.totalAmount + onlineStats.totalAmount;
 
     return {
       totalDistributed,
       activeCards,
       expiredCards,
       expiringWithin7Days,
-      expiringWithin30Days
+      expiringWithin30Days,
+      cashPurchases: {
+        count: cashStats.count,
+        totalAmount: cashStats.totalAmount
+      },
+      onlinePurchases: {
+        count: onlineStats.count,
+        totalAmount: onlineStats.totalAmount
+      },
+      paymentBreakdown: {
+        cash: {
+          count: cashStats.count,
+          totalAmount: cashStats.totalAmount
+        },
+        online: {
+          count: onlineStats.count,
+          totalAmount: onlineStats.totalAmount
+        },
+        totalAmount: totalRevenue
+      },
+      totalCashAmount: cashStats.totalAmount,
+      totalOnlineAmount: onlineStats.totalAmount,
+      totalAmount: totalRevenue
     };
   }
 
@@ -639,6 +704,7 @@ class CardService {
       status,
       planType,
       planId,
+      paymentMethod,
       distributedFrom,
       distributedTo,
       startDate,
@@ -745,6 +811,17 @@ class CardService {
         });
       }
 
+      if (paymentMethod) {
+        const pmUpper = paymentMethod.toUpperCase().trim();
+        if (pmUpper === 'CASH') {
+          allCards = allCards.filter(c => (c.paymentMethod || '').toUpperCase() === 'CASH');
+        } else if (pmUpper === 'ONLINE' || pmUpper === 'GATEWAY' || pmUpper === 'PAYMENT_GATEWAY') {
+          allCards = allCards.filter(c => (c.paymentMethod || '').toUpperCase() !== 'CASH');
+        } else {
+          allCards = allCards.filter(c => (c.paymentMethod || '').toUpperCase() === pmUpper);
+        }
+      }
+
       const distFrom = distributedFrom || startDate;
       const distTo = distributedTo || endDate;
       if (distFrom) allCards = allCards.filter(c => c.distributedAt && new Date(c.distributedAt) >= new Date(distFrom));
@@ -782,11 +859,12 @@ class CardService {
 
       const total = allCards.length;
       const paginatedCards = allCards.slice(skip, skip + limitNum);
-      const summaryMetrics = await this.getCardDistributionSummaryCounts();
+      const summaryMetrics = await this.getCardDistributionSummaryCounts(scopeBaseFilter);
 
       return {
         cards: paginatedCards,
         summary: summaryMetrics,
+        paymentBreakdown: summaryMetrics.paymentBreakdown,
         pagination: {
           total,
           page: pageNum,
@@ -850,6 +928,17 @@ class CardService {
       filter['activeCard.cardPlan'] = planId;
     }
 
+    if (paymentMethod) {
+      const pmUpper = paymentMethod.toUpperCase().trim();
+      if (pmUpper === 'CASH') {
+        filter['activeCard.paymentMethod'] = 'CASH';
+      } else if (pmUpper === 'ONLINE' || pmUpper === 'GATEWAY' || pmUpper === 'PAYMENT_GATEWAY') {
+        filter['activeCard.paymentMethod'] = { $ne: 'CASH' };
+      } else {
+        filter['activeCard.paymentMethod'] = pmUpper;
+      }
+    }
+
     const distFrom = distributedFrom || startDate;
     const distTo = distributedTo || endDate;
     if (distFrom || distTo) {
@@ -895,13 +984,14 @@ class CardService {
         .skip(skip)
         .limit(limitNum),
       Customer.countDocuments(filter),
-      this.getCardDistributionSummaryCounts()
+      this.getCardDistributionSummaryCounts(scopeBaseFilter)
     ]);
 
     const formattedCards = customers.map(cust => {
-      // Find assignedBy and paymentStatus from cardHistory if available
+      // Find assignedBy, paymentStatus, and paymentMethod from cardHistory if available
       let assignedBy = null;
       let paymentStatus = 'COMPLETED';
+      let paymentMethod = cust.activeCard?.paymentMethod || 'ONLINE';
       if (cust.cardHistory && cust.cardHistory.length > 0) {
         const matchingHistory = cust.cardHistory.find(
           h => h.cardNumber === cust.activeCard.cardNumber
@@ -909,19 +999,24 @@ class CardService {
         if (matchingHistory) {
           assignedBy = matchingHistory.assignedBy;
           paymentStatus = matchingHistory.paymentStatus || 'COMPLETED';
+          if (matchingHistory.paymentMethod) {
+            paymentMethod = matchingHistory.paymentMethod;
+          }
         }
       }
 
       return this._formatDistributedCard(cust, {
-        ...cust.activeCard.toObject ? cust.activeCard.toObject() : cust.activeCard,
+        ...(cust.activeCard.toObject ? cust.activeCard.toObject() : cust.activeCard),
         assignedBy,
-        paymentStatus
+        paymentStatus,
+        paymentMethod
       }, false);
     });
 
     return {
       cards: formattedCards,
       summary: summaryMetrics,
+      paymentBreakdown: summaryMetrics.paymentBreakdown,
       pagination: {
         total,
         page: pageNum,

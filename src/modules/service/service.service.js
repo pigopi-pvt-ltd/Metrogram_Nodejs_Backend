@@ -341,7 +341,7 @@ class ServiceService {
    */
   async updateBookingStatus(
     bookingId,
-    { bookingStatus, sampleCollectedAt, reportReadyAt, reportUrl, notes },
+    { bookingStatus, sampleCollectedAt, reportReadyAt, reportUrl, notes, hospitalName },
     staffUserId,
     file = null
   ) {
@@ -368,6 +368,7 @@ class ServiceService {
     if (sampleCollectedAt) booking.sampleCollectedAt = new Date(sampleCollectedAt);
     if (reportReadyAt) booking.reportReadyAt = new Date(reportReadyAt);
     if (notes !== undefined) booking.notes = notes;
+    if (hospitalName !== undefined) booking.hospitalName = String(hospitalName).trim();
     booking.handledBy = staffUserId;
 
     // Handle Report PDF file upload (if uploaded via multipart form)

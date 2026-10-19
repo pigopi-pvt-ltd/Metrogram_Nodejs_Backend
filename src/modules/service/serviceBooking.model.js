@@ -61,6 +61,11 @@ const serviceBookingSchema = new mongoose.Schema(
       phone: { type: String, trim: true },
       email: { type: String, trim: true }
     },
+    hospitalName: {
+      type: String,
+      trim: true,
+      default: ''
+    },
     collectionType: {
       type: String,
       enum: ['HOME_COLLECTION', 'LAB_VISIT'],

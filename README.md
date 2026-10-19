@@ -102,6 +102,7 @@ src/
   - `testType` (e.g. "Blood Test", "Biochemistry", "Urine Test")
   - `reportTime` (e.g. "24 Hours", "Same Day")
   - `sampleType` (e.g. "Blood Sample", "Urine Sample")
+  - `hospitalName` (Optional partner hospital / lab name string)
   - `price` (standard test price)
   - `discountedPrice` (discounted price for health card holders)
   - `parametersMeasured` (array of measured parameters: RBC, WBC, Platelets, etc.)

@@ -165,7 +165,7 @@ Role permissions are defined in `src/constants/roles.js`:
 - `POST /api/cards/assign` — Assign card plan to customer face-to-face (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`). Accepts `paymentMethod` (`CASH` for instant offline assignment without payment gateway; or `ONLINE` / `UPI` / `CARD` to generate a Cashfree payment session for the card price), and optional `cardNumber` (staff manually inserts the number after `MG-YEA-` or the full string, formatted as `MG-<TYPE>-<manual_number>`, with uniqueness verification; auto-generates random if omitted).
 - `GET /api/cards/my-card` — View logged-in customer's active card details and validity.
 - `GET /api/cards/customer/:userId` — View specific customer's card details (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
-- `GET /api/cards/distributions` (or `/api/cards/distributed`) — View all cards distributed among customers with distribution dates, renewal dates, days remaining, renewal status, customer info, and filters (`status`, `search`, `planType`, `planId`, `distributedFrom`, `distributedTo`, `renewalFrom`, `renewalTo`, `expiringWithinDays`, `page`, `limit`) (`SUPER_ADMIN`, `MANAGER`).
+- `GET /api/cards/distributions` (or `/api/cards/distributed`) — View all cards distributed among customers with distribution dates, renewal dates, days remaining, renewal status, customer info, cash vs online payment breakdown (`cashPurchases`, `onlinePurchases`, `paymentBreakdown` with counts and total amounts), and filters (`status`, `search`, `planType`, `planId`, `paymentMethod`, `distributedFrom`, `distributedTo`, `renewalFrom`, `renewalTo`, `expiringWithinDays`, `page`, `limit`) (`SUPER_ADMIN`, `MANAGER`).
 - `GET /api/cards/distributions/stats` (or `/api/cards/distribution-stats`) — Comprehensive metrics on card distribution and renewals: total distributed, active, expired, renewal window buckets (overdue, today, 7d, 15d, 30d, 60d), plan breakdowns, timeline, recent distributions, and upcoming renewals (`SUPER_ADMIN`, `MANAGER`).
 - `GET /api/cards/distributions/renewals` (or `/api/cards/renewals`) — Targeted upcoming and overdue renewals list for renewal outreach and customer follow-up (`days`, `status`, `search`, `page`, `limit`) (`SUPER_ADMIN`, `MANAGER`).
 
@@ -181,12 +181,12 @@ Role permissions are defined in `src/constants/roles.js`:
 - `GET /api/payments` — Admin/Manager query all payment transactions with filters (`status`, `entityType`, date range, search).
 
 ### 🩺 4. Diagnostic Service Bookings (`/api/services/bookings`)
-- `GET /api/services/bookings/my-bookings` — Customer view test bookings.
+- `GET /api/services/bookings/my-bookings` — Customer view test bookings (includes optional `hospitalName`).
 - `GET /api/services/bookings` — Staff view all diagnostic test bookings (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
 - `GET /api/services/bookings/:id` — View single diagnostic test booking.
 - `POST /api/services/bookings/:id/cancel` — Cancel test booking with automated Cashfree refund (checks sample status).
-- `GET /api/services/bookings/:id/receipt` — Download PDF receipt for diagnostic booking.
-- `PATCH /api/services/bookings/:id/status` — Update sample collection status, completion time, or report URL (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
+- `GET /api/services/bookings/:id/receipt` — Download PDF receipt for diagnostic booking (includes hospital/lab name if specified).
+- `PATCH /api/services/bookings/:id/status` — Update sample collection status, completion time, hospital name, or report URL (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
 
 ### 🧾 5. Invoices & Receipts (`/api/receipts`)
 - `GET /api/receipts/cards/my-card/pdf` — Download PDF receipt for logged-in customer's active health card.

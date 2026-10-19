@@ -172,10 +172,20 @@ class PaymentService {
         isCardDiscountApplied = false;
       }
 
+      const requestedHospital = (
+        bookingDetails.hospitalName ||
+        bookingDetails.hospital ||
+        bookingDetails.labName ||
+        bookingDetails.preferredHospital ||
+        service.hospitalName ||
+        ''
+      ).trim();
+
       formattedBookingDetails = {
         testName: service.testName,
         sampleType: service.sampleType,
         reportTime: service.reportTime,
+        hospitalName: requestedHospital,
         patientName: bookingDetails.patientName || `${user.firstName} ${user.lastName}`.trim(),
         patientAge: bookingDetails.patientAge ? Number(bookingDetails.patientAge) : undefined,
         patientGender: bookingDetails.patientGender || undefined,
@@ -407,6 +417,7 @@ class PaymentService {
           customer: userId,
           service: service._id,
           payment: paymentDoc._id,
+          hospitalName: paymentDoc.bookingDetails?.hospitalName || service.hospitalName || '',
           amountPaid: paymentDoc.amount,
           originalPrice: service.price,
           discountApplied: discountAmount,

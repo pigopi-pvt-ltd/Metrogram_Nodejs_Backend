@@ -302,6 +302,7 @@ class CardController {
         success: true,
         message: 'Distributed cards retrieved successfully',
         summary: result.summary,
+        paymentBreakdown: result.paymentBreakdown,
         count: result.cards.length,
         pagination: result.pagination,
         data: result.cards

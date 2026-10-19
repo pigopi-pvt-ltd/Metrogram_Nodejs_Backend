@@ -73,6 +73,7 @@ class ReceiptService {
     let patientDetails = null;
     let collectionAddress = '';
     let originalPrice = payment.amount;
+    let hospitalName = '';
 
     if (payment.entityType === 'CARD') {
       itemName = payment.cardDetails?.planName || payment.entityId?.name || 'MetroGram Health Card';
@@ -116,6 +117,8 @@ class ReceiptService {
       } else if (payment.bookingDetails?.address) {
         collectionAddress = this.formatAddress(payment.bookingDetails.address);
       }
+
+      hospitalName = booking?.hospitalName || payment.bookingDetails?.hospitalName || service?.hospitalName || '';
     }
 
     const receiptNumber = `REC-${payment.orderId.replace(/^ORD_/, '')}`;
@@ -141,6 +144,7 @@ class ReceiptService {
       cardNumber,
       validityInDays,
       sampleType,
+      hospitalName,
       collectionType,
       scheduledDate,
       timeSlot,
@@ -204,6 +208,7 @@ class ReceiptService {
       amountPaid: booking.amountPaid,
       originalPrice: booking.originalPrice || booking.amountPaid,
       sampleType: booking.service?.sampleType || '',
+      hospitalName: booking.hospitalName || booking.payment?.bookingDetails?.hospitalName || booking.service?.hospitalName || '',
       collectionType: booking.collectionType || 'LAB_VISIT',
       scheduledDate: booking.scheduledDate,
       timeSlot: booking.timeSlot,

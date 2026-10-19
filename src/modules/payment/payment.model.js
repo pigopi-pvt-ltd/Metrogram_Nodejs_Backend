@@ -116,6 +116,7 @@ const paymentSchema = new mongoose.Schema(
       testName: { type: String },
       sampleType: { type: String },
       reportTime: { type: String },
+      hospitalName: { type: String, trim: true, default: '' },
       patientName: { type: String, trim: true },
       patientAge: { type: Number },
       patientGender: { type: String, enum: ['MALE', 'FEMALE', 'OTHER'] },

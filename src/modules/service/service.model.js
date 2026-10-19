@@ -35,6 +35,11 @@ const serviceSchema = new mongoose.Schema(
       required: [true, 'Sample type is required'],
       trim: true
     },
+    hospitalName: {
+      type: String,
+      trim: true,
+      default: ''
+    },
     price: {
       type: Number,
       required: [true, 'Standard price is required'],

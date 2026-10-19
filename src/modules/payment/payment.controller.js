@@ -64,7 +64,10 @@ class PaymentController {
         entityType: entityType.toUpperCase().trim(),
         entityId,
         cardNumber: cardNumber || manualCardNumber || cardNumberSuffix,
-        bookingDetails,
+        bookingDetails: {
+          ...(bookingDetails || {}),
+          ...(req.body.hospitalName ? { hospitalName: req.body.hospitalName } : {})
+        },
         returnUrl,
         customNotes: notes
       });

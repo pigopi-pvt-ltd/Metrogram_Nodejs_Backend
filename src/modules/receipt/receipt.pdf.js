@@ -242,7 +242,8 @@ class ReceiptPdfService {
       doc.fontSize(8).font('Helvetica-Bold').fillColor(primaryColor).text('PATIENT & SAMPLE COLLECTION INFORMATION', margin + 8, pY, { lineBreak: false });
 
       const pat = data.patientDetails;
-      const patText = `Patient: ${pat.name || 'N/A'}  |  Age/Gender: ${pat.age || 'N/A'} / ${pat.gender || 'N/A'}  |  Phone: ${pat.phone || 'N/A'}`;
+      const hospitalText = data.hospitalName ? `  |  Lab/Hospital: ${data.hospitalName}` : '';
+      const patText = `Patient: ${pat.name || 'N/A'}  |  Age/Gender: ${pat.age || 'N/A'} / ${pat.gender || 'N/A'}  |  Phone: ${pat.phone || 'N/A'}${hospitalText}`;
       doc.fontSize(7.5).font('Helvetica').fillColor(darkColor).text(patText, margin + 8, pY + 12, { lineBreak: false });
 
       if (data.collectionAddress) {
