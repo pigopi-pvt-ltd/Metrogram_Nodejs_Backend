@@ -22,6 +22,31 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
+const imageOnlyFilter = (req, file, cb) => {
+  const allowedMimeTypes = [
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/webp'
+  ];
+
+  if (allowedMimeTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    const error = new Error('Invalid file type for profile image. Only JPEG, PNG, and WEBP images are allowed.');
+    error.statusCode = 400;
+    cb(error, false);
+  }
+};
+
+export const uploadProfileImage = multer({
+  storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  },
+  fileFilter: imageOnlyFilter
+}).single('profileImage');
+
 export const uploadCustomerDocuments = multer({
   storage,
   limits: {
@@ -29,9 +54,27 @@ export const uploadCustomerDocuments = multer({
   },
   fileFilter
 }).fields([
+  { name: 'profileImage', maxCount: 1 },
   { name: 'aadharImage', maxCount: 1 },
   { name: 'panImage', maxCount: 1 }
 ]);
+
+export const uploadUserFiles = uploadCustomerDocuments;
+
+/**
+ * Helper to retrieve uploaded profile image file whether uploaded as single or fields
+ * @param {Object} req - Express request
+ * @returns {Object|null} Multer file object or null
+ */
+export const extractUploadedProfileImage = (req) => {
+  if (req?.file && req.file.fieldname === 'profileImage') {
+    return req.file;
+  }
+  if (req?.files?.profileImage && req.files.profileImage[0]) {
+    return req.files.profileImage[0];
+  }
+  return null;
+};
 
 export const uploadTestReport = multer({
   storage,

@@ -5,6 +5,7 @@ import managerService from '../manager/manager.service.js';
 import employeeService from '../employee/employee.service.js';
 import customerService from '../customer/customer.service.js';
 import { ROLES, ROLE_CREATION_PERMISSIONS } from '../../constants/roles.js';
+import { deleteFromCloudinary } from '../../config/cloudinary.js';
 
 // Ensure all models are registered in mongoose
 import '../superAdmin/superAdmin.model.js';
@@ -103,6 +104,15 @@ class UserService {
         if (userData.lastName) targetUser.lastName = userData.lastName;
         if (userData.phoneNumber !== undefined) targetUser.phoneNumber = userData.phoneNumber;
         if (userData.password) targetUser.password = userData.password;
+        if (userData.profileImage !== undefined) {
+          if (targetUser.profileImagePublicId && targetUser.profileImagePublicId !== userData.profileImagePublicId) {
+            deleteFromCloudinary(targetUser.profileImagePublicId).catch((err) => {
+              console.error('[Cloudinary] Failed to delete old super admin profile image:', err.message);
+            });
+          }
+          targetUser.profileImage = userData.profileImage;
+          targetUser.profileImagePublicId = userData.profileImagePublicId || null;
+        }
         await targetUser.save();
         return await User.findById(userId).populate('profile');
       }
@@ -158,6 +168,11 @@ class UserService {
         );
 
       default:
+        if (targetUser.profileImagePublicId) {
+          deleteFromCloudinary(targetUser.profileImagePublicId).catch((err) => {
+            console.error('[Cloudinary] Failed to delete user profile image:', err.message);
+          });
+        }
         await User.findByIdAndDelete(userId);
         return { success: true, message: 'User deleted successfully' };
     }

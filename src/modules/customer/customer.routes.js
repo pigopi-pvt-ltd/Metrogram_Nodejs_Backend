@@ -3,7 +3,7 @@ import customerController from './customer.controller.js';
 import { protect } from '../../middleware/auth.js';
 import { authorize } from '../../middleware/roleCheck.js';
 import { ROLES } from '../../constants/roles.js';
-import { uploadCustomerDocuments } from '../../middleware/upload.js';
+import { uploadCustomerDocuments, uploadProfileImage } from '../../middleware/upload.js';
 
 const router = express.Router();
 
@@ -55,6 +55,14 @@ router.put(
   authorize(ROLES.SUPER_ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE, ROLES.CUSTOMER),
   uploadCustomerDocuments,
   customerController.update.bind(customerController)
+);
+
+// Dedicated profile image update for customer
+router.patch(
+  '/:userId/profile-image',
+  authorize(ROLES.SUPER_ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE, ROLES.CUSTOMER),
+  uploadProfileImage,
+  customerController.updateProfileImage.bind(customerController)
 );
 
 // Super Admin, Manager, and Employee can delete Customers

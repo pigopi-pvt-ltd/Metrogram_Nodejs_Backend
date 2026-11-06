@@ -2,6 +2,7 @@ import Manager from './manager.model.js';
 import User from '../user/user.model.js';
 import Employee from '../employee/employee.model.js';
 import { ROLES, PROFILE_MODELS } from '../../constants/roles.js';
+import { deleteFromCloudinary } from '../../config/cloudinary.js';
 
 class ManagerService {
   /**
@@ -33,6 +34,8 @@ class ManagerService {
       email: userData.email.toLowerCase(),
       password: userData.password,
       phoneNumber: userData.phoneNumber,
+      profileImage: userData.profileImage || null,
+      profileImagePublicId: userData.profileImagePublicId || null,
       role: ROLES.MANAGER,
       profileModel: PROFILE_MODELS[ROLES.MANAGER],
       createdBy: creatorId
@@ -76,6 +79,16 @@ class ManagerService {
     if (userData.isActive !== undefined) user.isActive = userData.isActive;
     if (userData.password) {
       user.password = userData.password;
+    }
+
+    if (userData.profileImage !== undefined) {
+      if (user.profileImagePublicId && user.profileImagePublicId !== userData.profileImagePublicId) {
+        deleteFromCloudinary(user.profileImagePublicId).catch((err) => {
+          console.error('[Cloudinary] Failed to delete old manager profile image:', err.message);
+        });
+      }
+      user.profileImage = userData.profileImage;
+      user.profileImagePublicId = userData.profileImagePublicId || null;
     }
 
     if (userData.email && userData.email.toLowerCase() !== user.email) {
@@ -123,7 +136,7 @@ class ManagerService {
         path: 'profile',
         populate: {
           path: 'managedEmployees',
-          populate: { path: 'user', select: 'firstName lastName email phoneNumber isActive role' }
+          populate: { path: 'user', select: 'firstName lastName email phoneNumber isActive role profileImage' }
         }
       })
       .populate('createdBy', 'firstName lastName email role');
@@ -147,6 +160,12 @@ class ManagerService {
       await Manager.findByIdAndDelete(managerProfile._id);
     }
 
+    if (user.profileImagePublicId) {
+      deleteFromCloudinary(user.profileImagePublicId).catch((err) => {
+        console.error('[Cloudinary] Failed to delete manager profile image on delete:', err.message);
+      });
+    }
+
     await User.findByIdAndDelete(userId);
     return { success: true, message: 'Manager and associated profile deleted successfully' };
   }
@@ -159,7 +178,7 @@ class ManagerService {
       .populate('user')
       .populate({
         path: 'managedEmployees',
-        populate: { path: 'user', select: 'firstName lastName email phoneNumber isActive role' }
+        populate: { path: 'user', select: 'firstName lastName email phoneNumber isActive role profileImage' }
       });
   }
 
@@ -171,7 +190,7 @@ class ManagerService {
       .populate('user')
       .populate({
         path: 'managedEmployees',
-        populate: { path: 'user', select: 'firstName lastName email phoneNumber isActive role' }
+        populate: { path: 'user', select: 'firstName lastName email phoneNumber isActive role profileImage' }
       })
       .sort({ createdAt: -1 });
   }

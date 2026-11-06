@@ -3,15 +3,17 @@ import managerController from './manager.controller.js';
 import { protect } from '../../middleware/auth.js';
 import { authorize } from '../../middleware/roleCheck.js';
 import { ROLES } from '../../constants/roles.js';
+import { uploadProfileImage } from '../../middleware/upload.js';
 
 const router = express.Router();
 
 router.use(protect);
 
-// Create a Manager (Super Admin only)
+// Create a Manager (Super Admin only, supports profile image)
 router.post(
   '/',
   authorize(ROLES.SUPER_ADMIN),
+  uploadProfileImage,
   managerController.create.bind(managerController)
 );
 
@@ -29,11 +31,20 @@ router.get(
   managerController.getProfile.bind(managerController)
 );
 
-// Update Manager (Super Admin only)
+// Update Manager (Super Admin only, supports profile image)
 router.put(
   '/:userId',
   authorize(ROLES.SUPER_ADMIN),
+  uploadProfileImage,
   managerController.update.bind(managerController)
+);
+
+// Dedicated profile image update for manager
+router.patch(
+  '/:userId/profile-image',
+  authorize(ROLES.SUPER_ADMIN, ROLES.MANAGER),
+  uploadProfileImage,
+  managerController.updateProfileImage.bind(managerController)
 );
 
 // Delete Manager (Super Admin only)

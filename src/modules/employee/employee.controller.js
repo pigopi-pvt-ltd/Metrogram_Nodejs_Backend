@@ -1,4 +1,6 @@
 import employeeService from './employee.service.js';
+import { uploadProfileImageToCloudinary } from '../../config/cloudinary.js';
+import { extractUploadedProfileImage } from '../../middleware/upload.js';
 
 class EmployeeController {
   async create(req, res, next) {
@@ -16,8 +18,26 @@ class EmployeeController {
         managerId
       } = req.body;
 
+      let profileImageUrl = req.body.profileImage || null;
+      let profileImagePublicId = req.body.profileImagePublicId || null;
+
+      const profileImageFile = extractUploadedProfileImage(req);
+      if (profileImageFile) {
+        const uploadRes = await uploadProfileImageToCloudinary(profileImageFile.buffer);
+        profileImageUrl = uploadRes.secure_url;
+        profileImagePublicId = uploadRes.public_id;
+      }
+
       const newEmployee = await employeeService.createEmployee({
-        userData: { firstName, lastName, email, password, phoneNumber },
+        userData: {
+          firstName,
+          lastName,
+          email,
+          password,
+          phoneNumber,
+          profileImage: profileImageUrl,
+          profileImagePublicId
+        },
         profileData: {
           employeeCode,
           designation,
@@ -67,6 +87,16 @@ class EmployeeController {
       if (password) userData.password = password;
       if (phoneNumber !== undefined) userData.phoneNumber = phoneNumber;
       if (isActive !== undefined) userData.isActive = isActive;
+
+      const profileImageFile = extractUploadedProfileImage(req);
+      if (profileImageFile) {
+        const uploadRes = await uploadProfileImageToCloudinary(profileImageFile.buffer);
+        userData.profileImage = uploadRes.secure_url;
+        userData.profileImagePublicId = uploadRes.public_id;
+      } else if (req.body.profileImage !== undefined) {
+        userData.profileImage = req.body.profileImage;
+        userData.profileImagePublicId = req.body.profileImagePublicId || null;
+      }
 
       const profileData = {};
       if (employeeCode !== undefined) profileData.employeeCode = employeeCode;
@@ -147,6 +177,54 @@ class EmployeeController {
       res.status(200).json({
         success: true,
         data: employees
+      });
+    } catch (error) {
+      if (error.statusCode) {
+        return res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        });
+      }
+      next(error);
+    }
+  }
+
+  async updateProfileImage(req, res, next) {
+    try {
+      const targetUserId = req.params.userId || req.user._id;
+      const file = extractUploadedProfileImage(req);
+      let profileImageUrl = req.body.profileImage || null;
+      let profileImagePublicId = req.body.profileImagePublicId || null;
+
+      if (file) {
+        const uploadRes = await uploadProfileImageToCloudinary(file.buffer);
+        profileImageUrl = uploadRes.secure_url;
+        profileImagePublicId = uploadRes.public_id;
+      }
+
+      if (!profileImageUrl) {
+        return res.status(400).json({
+          success: false,
+          message: 'Please provide an image file (field: profileImage) or a profileImage URL'
+        });
+      }
+
+      const updated = await employeeService.updateEmployee(
+        targetUserId,
+        {
+          userData: {
+            profileImage: profileImageUrl,
+            profileImagePublicId
+          },
+          profileData: {}
+        },
+        req.user
+      );
+
+      res.status(200).json({
+        success: true,
+        message: 'Employee profile image updated successfully',
+        data: updated
       });
     } catch (error) {
       if (error.statusCode) {

@@ -71,7 +71,7 @@ When creating a new domain:
 The authentication and user identity system separates the core account from role-specific metadata:
 
 - **Base Model (`src/modules/user/user.model.js`)**:
-  - Contains shared fields: `firstName`, `lastName`, `email`, `password`, `phoneNumber`, `role`, `isActive`, `createdBy`.
+  - Contains shared fields: `firstName`, `lastName`, `email`, `password`, `phoneNumber`, `profileImage`, `profileImagePublicId`, `role`, `isActive`, `createdBy`.
   - Uses dynamic polymorphic reference via Mongoose `refPath`:
     ```javascript
     profile: {
@@ -218,10 +218,11 @@ Role permissions are defined in `src/constants/roles.js`:
 - `DELETE /api/careers/applications/:id` — Delete application and clean up resume file from Cloudinary (`SUPER_ADMIN` only).
 
 ### 🔑 7. Auth Module (`/api/auth`)
-- `POST /api/auth/register` — Public customer self-registration with personal info, optional Aadhar & PAN details, and document uploads (`aadharImage`, `panImage`) stored in Cloudinary. Automatically creates customer profile and returns JWT + user. Accepts `multipart/form-data` or JSON.
-- `POST /api/auth/login` — Public login for all roles (sets HTTP-Only cookie `token`).
+- `POST /api/auth/register` — Public customer self-registration with personal info, optional profile image (`profileImage`) stored in Cloudinary, optional Aadhar & PAN details, and document uploads (`aadharImage`, `panImage`) stored in Cloudinary. Automatically creates customer profile and returns JWT + user. Accepts `multipart/form-data` or JSON.
+- `POST /api/auth/login` — Public login for all roles (sets HTTP-Only cookie `token`, returns user including `profileImage`).
 - `POST /api/auth/logout` — Logout user (clears HTTP-Only cookie `token`).
-- `GET /api/auth/me` — Get current logged-in user with populated profile.
+- `GET /api/auth/me` — Get current logged-in user with populated profile and `profileImage`.
+- `PATCH /api/auth/profile-image` or `PUT /api/auth/profile-image` — Update authenticated user's profile image directly in Cloudinary.
 - `POST /api/auth/change-password` — Change password for authenticated user (requires `currentPassword`, `newPassword`, optional `confirmPassword`).
 - `POST /api/auth/forgot-password` — Request 6-digit password reset OTP email (requires `email`).
 - `POST /api/auth/reset-password` — Verify reset OTP and set new password (requires `email`, `otp`, `newPassword`, optional `confirmPassword`).
@@ -255,15 +256,16 @@ Role permissions are defined in `src/constants/roles.js`:
 - `DELETE /api/customers/:userId` — Delete customer & profile and remove stored document images from Cloudinary (enforces ownership: Employees can only delete their own; Managers can only delete within their team).
 
 ### 👥 13. Generic User Module (`/api/users`)
-- `POST /api/users` — Generic creation (enforces role creation hierarchy).
-- `POST /api/users/manager` — Dedicated manager creation endpoint.
-- `POST /api/users/employee` — Dedicated employee creation endpoint.
-- `POST /api/users/customer` — Dedicated customer creation endpoint with Aadhar & PAN numbers and document images (`aadharImage`, `panImage`). Accepts `multipart/form-data` or JSON.
+- `POST /api/users` — Generic creation (enforces role creation hierarchy, supports `profileImage` upload stored in Cloudinary).
+- `POST /api/users/manager` — Dedicated manager creation endpoint (supports `profileImage` upload stored in Cloudinary).
+- `POST /api/users/employee` — Dedicated employee creation endpoint (supports `profileImage` upload stored in Cloudinary).
+- `POST /api/users/customer` — Dedicated customer creation endpoint with optional `profileImage`, Aadhar & PAN numbers and document images (`aadharImage`, `panImage`). Accepts `multipart/form-data` or JSON.
 - `GET /api/users` — Query users (filtering by `role`, `search` query, and pagination `page`, `limit`).
-- `GET /api/users/:id` — Get single user by ID with populated profile.
-- `PUT /api/users/:id` — Update user and linked profile (enforces hierarchy permissions).
+- `GET /api/users/:id` — Get single user by ID with populated profile and `profileImage`.
+- `PUT /api/users/:id` — Update user and linked profile (enforces hierarchy permissions, supports `profileImage` upload).
+- `PATCH /api/users/:id/profile-image` — Update specific user's profile image in Cloudinary.
 - `PATCH /api/users/:id/status` — Toggle user active/inactive status (`isActive: true/false`).
-- `DELETE /api/users/:id` — Delete user and linked profile document (enforces hierarchy permissions).
+- `DELETE /api/users/:id` — Delete user and linked profile document (enforces hierarchy permissions, automatically cleans up profile image from Cloudinary).
 
 ### 🤝 14. Franchise Enquiries (`/api/franchise` or `/api/franchises`)
 - `POST /api/franchise` or `POST /api/franchise/enquiry` — Public franchise enquiry submission with applicant fields (`name`/`fullName`, `email`, `mobile`/`phone`, `location`, `currentOccupation`, `address`, `pincode`/`code` or `addressWithCode`, optional `notes`). Automatically alerts Super Admin via email and sends confirmation to applicant.

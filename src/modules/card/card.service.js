@@ -770,9 +770,9 @@ class CardService {
       }
 
       const customers = await Customer.find(customerFilter)
-        .populate('user', 'firstName lastName email phoneNumber isActive createdAt')
+        .populate('user', 'firstName lastName email phoneNumber isActive createdAt profileImage')
         .populate('cardHistory.cardPlan')
-        .populate('cardHistory.assignedBy', 'firstName lastName email role')
+        .populate('cardHistory.assignedBy', 'firstName lastName email role profileImage')
         .populate('activeCard.cardPlan');
 
       let allCards = [];
@@ -978,7 +978,7 @@ class CardService {
 
     const [customers, total, summaryMetrics] = await Promise.all([
       Customer.find(filter)
-        .populate('user', 'firstName lastName email phoneNumber isActive createdAt')
+        .populate('user', 'firstName lastName email phoneNumber isActive createdAt profileImage')
         .populate('activeCard.cardPlan')
         .sort({ [sortPath]: sortDir })
         .skip(skip)
@@ -1161,7 +1161,7 @@ class CardService {
         { $sort: { count: -1 } }
       ]),
       Customer.find({ ...scopeBaseFilter, 'activeCard.cardNumber': { $ne: null } })
-        .populate('user', 'firstName lastName email phoneNumber')
+        .populate('user', 'firstName lastName email phoneNumber profileImage')
         .populate('activeCard.cardPlan', 'name planType price')
         .sort({ 'activeCard.purchasedAt': -1 })
         .limit(5),
@@ -1170,7 +1170,7 @@ class CardService {
         'activeCard.cardNumber': { $ne: null },
         'activeCard.expiresAt': { $gte: now }
       })
-        .populate('user', 'firstName lastName email phoneNumber')
+        .populate('user', 'firstName lastName email phoneNumber profileImage')
         .populate('activeCard.cardPlan', 'name planType price')
         .sort({ 'activeCard.expiresAt': 1 })
         .limit(5)
@@ -1296,7 +1296,7 @@ class CardService {
 
     const [customers, total] = await Promise.all([
       Customer.find(filter)
-        .populate('user', 'firstName lastName email phoneNumber isActive')
+        .populate('user', 'firstName lastName email phoneNumber isActive profileImage')
         .populate('activeCard.cardPlan')
         .sort({ [sortPath]: sortDir })
         .skip(skip)

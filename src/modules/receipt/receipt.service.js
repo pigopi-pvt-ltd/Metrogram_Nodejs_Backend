@@ -26,7 +26,7 @@ class ReceiptService {
     const query = isObjectId ? { _id: paymentIdOrOrderId } : { orderId: paymentIdOrOrderId };
 
     const payment = await Payment.findOne(query)
-      .populate('user', 'firstName lastName email phoneNumber')
+      .populate('user', 'firstName lastName email phoneNumber profileImage')
       .populate('customer')
       .populate('entityId')
       .populate('serviceBooking');
@@ -161,7 +161,7 @@ class ReceiptService {
     const query = isObjectId ? { _id: bookingIdOrCode } : { bookingCode: bookingIdOrCode };
 
     const booking = await ServiceBooking.findOne(query)
-      .populate('customer', 'firstName lastName email phoneNumber')
+      .populate('customer', 'firstName lastName email phoneNumber profileImage')
       .populate('service')
       .populate('payment');
 
@@ -230,7 +230,7 @@ class ReceiptService {
     }
 
     const customer = await Customer.findOne({ user: targetUserId })
-      .populate('user', 'firstName lastName email phoneNumber')
+      .populate('user', 'firstName lastName email phoneNumber profileImage')
       .populate('activeCard.cardPlan');
 
     if (!customer || !customer.hasCard || !customer.activeCard?.cardPlan) {

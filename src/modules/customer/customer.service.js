@@ -242,8 +242,8 @@ class CustomerService {
       await customerDoc.save();
 
       return await Customer.findById(customerDoc._id)
-        .populate('user', 'firstName lastName email phoneNumber isActive role createdBy createdAt')
-        .populate('assignedEmployee', 'firstName lastName email phoneNumber role')
+        .populate('user', 'firstName lastName email phoneNumber isActive role createdBy createdAt profileImage')
+        .populate('assignedEmployee', 'firstName lastName email phoneNumber role profileImage')
         .populate('activeCard.cardPlan');
     }
 
@@ -267,10 +267,10 @@ class CustomerService {
     await customerDoc.save();
 
     return await Customer.findById(customerDoc._id)
-      .populate('user', 'firstName lastName email phoneNumber isActive role createdBy createdAt')
+      .populate('user', 'firstName lastName email phoneNumber isActive role createdBy createdAt profileImage')
       .populate({
         path: 'assignedEmployee',
-        select: 'firstName lastName email phoneNumber role profile',
+        select: 'firstName lastName email phoneNumber role profile profileImage',
         populate: {
           path: 'profile',
           select: 'employeeCode designation department manager'
@@ -352,6 +352,8 @@ class CustomerService {
       email: userData.email.toLowerCase(),
       password: userData.password,
       phoneNumber: userData.phoneNumber,
+      profileImage: userData.profileImage || null,
+      profileImagePublicId: userData.profileImagePublicId || null,
       role: ROLES.CUSTOMER,
       profileModel: PROFILE_MODELS[ROLES.CUSTOMER],
       createdBy: creatorId
@@ -383,7 +385,7 @@ class CustomerService {
       .populate({
         path: 'profile',
         populate: [
-          { path: 'assignedEmployee', select: 'firstName lastName email phoneNumber role' },
+          { path: 'assignedEmployee', select: 'firstName lastName email phoneNumber role profileImage' },
           { path: 'activeCard.cardPlan' }
         ]
       })
@@ -460,6 +462,16 @@ class CustomerService {
       userDoc.password = userData.password;
     }
 
+    if (userData.profileImage !== undefined) {
+      if (userDoc.profileImagePublicId && userDoc.profileImagePublicId !== userData.profileImagePublicId) {
+        deleteFromCloudinary(userDoc.profileImagePublicId).catch((err) => {
+          console.error('[Cloudinary] Failed to delete old customer profile image:', err.message);
+        });
+      }
+      userDoc.profileImage = userData.profileImage;
+      userDoc.profileImagePublicId = userData.profileImagePublicId || null;
+    }
+
     if (userData.email && userData.email.toLowerCase() !== userDoc.email) {
       const existing = await User.findOne({ email: userData.email.toLowerCase() });
       if (existing) {
@@ -484,7 +496,7 @@ class CustomerService {
       .populate({
         path: 'profile',
         populate: [
-          { path: 'assignedEmployee', select: 'firstName lastName email phoneNumber role' },
+          { path: 'assignedEmployee', select: 'firstName lastName email phoneNumber role profileImage' },
           { path: 'activeCard.cardPlan' }
         ]
       })
@@ -512,6 +524,12 @@ class CustomerService {
       await Customer.findByIdAndDelete(customerDoc._id);
     }
 
+    if (userDoc.profileImagePublicId) {
+      deleteFromCloudinary(userDoc.profileImagePublicId).catch((err) => {
+        console.error('[Cloudinary] Failed to delete customer profile image on delete:', err.message);
+      });
+    }
+
     await User.findByIdAndDelete(userDoc._id);
 
     return { success: true, message: 'Customer and associated profile deleted successfully' };
@@ -524,10 +542,10 @@ class CustomerService {
   async getProfileByUserId(userId, requestingUser = null) {
     const resolved = await this.verifyCustomerAccess(userId, requestingUser, 'view');
     return await Customer.findById(resolved.customerDoc._id)
-      .populate('user', 'firstName lastName email phoneNumber isActive role createdBy createdAt')
+      .populate('user', 'firstName lastName email phoneNumber isActive role createdBy createdAt profileImage')
       .populate({
         path: 'assignedEmployee',
-        select: 'firstName lastName email phoneNumber role profile',
+        select: 'firstName lastName email phoneNumber role profile profileImage',
         populate: {
           path: 'profile',
           select: 'employeeCode designation department manager'
@@ -665,10 +683,10 @@ class CustomerService {
     const isPaginated = !isNaN(pageNum) && pageNum > 0 && !isNaN(limitNum) && limitNum > 0;
 
     let queryExec = Customer.find(finalQuery)
-      .populate('user', 'firstName lastName email phoneNumber isActive role createdBy createdAt')
+      .populate('user', 'firstName lastName email phoneNumber isActive role createdBy createdAt profileImage')
       .populate({
         path: 'assignedEmployee',
-        select: 'firstName lastName email phoneNumber role profile',
+        select: 'firstName lastName email phoneNumber role profile profileImage',
         populate: {
           path: 'profile',
           select: 'employeeCode designation department manager'
@@ -774,7 +792,7 @@ class CustomerService {
         .skip(skip)
         .limit(limitNum),
       ServiceBooking.countDocuments(filter),
-      User.findById(targetUserId).select('firstName lastName email phoneNumber').populate('profile')
+      User.findById(targetUserId).select('firstName lastName email phoneNumber profileImage').populate('profile')
     ]);
 
     return {

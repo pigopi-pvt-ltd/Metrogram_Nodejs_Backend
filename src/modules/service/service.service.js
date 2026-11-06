@@ -288,7 +288,7 @@ class ServiceService {
 
     const [bookings, total] = await Promise.all([
       ServiceBooking.find(filter)
-        .populate('customer', 'firstName lastName email phoneNumber')
+        .populate('customer', 'firstName lastName email phoneNumber profileImage')
         .populate('service')
         .populate('payment')
         .populate('handledBy', 'firstName lastName email role')
@@ -312,7 +312,7 @@ class ServiceService {
    */
   async getBookingById(bookingId, requestingUser) {
     const booking = await ServiceBooking.findById(bookingId)
-      .populate('customer', 'firstName lastName email phoneNumber')
+      .populate('customer', 'firstName lastName email phoneNumber profileImage')
       .populate('service')
       .populate('payment')
       .populate('handledBy', 'firstName lastName email role');
@@ -346,7 +346,7 @@ class ServiceService {
     file = null
   ) {
     const booking = await ServiceBooking.findById(bookingId)
-      .populate('customer', 'firstName lastName email phoneNumber')
+      .populate('customer', 'firstName lastName email phoneNumber profileImage')
       .populate('service');
 
     if (!booking) {
@@ -441,7 +441,7 @@ class ServiceService {
    */
   async cancelBooking(bookingId, { reason = '' }, requestingUser) {
     const booking = await ServiceBooking.findById(bookingId)
-      .populate('customer', 'firstName lastName email phoneNumber')
+      .populate('customer', 'firstName lastName email phoneNumber profileImage')
       .populate('service')
       .populate('payment');
 

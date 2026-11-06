@@ -469,7 +469,7 @@ class PaymentService {
    */
   async verifyAndFulfillPayment(orderId) {
     const payment = await Payment.findOne({ orderId })
-      .populate('user', 'firstName lastName email phoneNumber')
+      .populate('user', 'firstName lastName email phoneNumber profileImage')
       .populate('entityId')
       .populate('serviceBooking');
 
@@ -483,7 +483,7 @@ class PaymentService {
     if (payment.isFulfilled && payment.status === 'PAID') {
       await this.fulfillOrder(payment);
       return await Payment.findById(payment._id)
-        .populate('user', 'firstName lastName email phoneNumber')
+        .populate('user', 'firstName lastName email phoneNumber profileImage')
         .populate('entityId')
         .populate('serviceBooking');
     }
@@ -539,7 +539,7 @@ class PaymentService {
 
     // Return freshly populated payment document
     return await Payment.findById(payment._id)
-      .populate('user', 'firstName lastName email phoneNumber')
+      .populate('user', 'firstName lastName email phoneNumber profileImage')
       .populate('entityId')
       .populate('serviceBooking');
   }
@@ -717,7 +717,7 @@ class PaymentService {
    */
   async getPaymentByOrderId(orderId, requestingUser) {
     const payment = await Payment.findOne({ orderId })
-      .populate('user', 'firstName lastName email phoneNumber')
+      .populate('user', 'firstName lastName email phoneNumber profileImage')
       .populate('entityId')
       .populate('serviceBooking');
 
@@ -811,7 +811,7 @@ class PaymentService {
 
     const [payments, total] = await Promise.all([
       Payment.find(filter)
-        .populate('user', 'firstName lastName email phoneNumber')
+        .populate('user', 'firstName lastName email phoneNumber profileImage')
         .populate('entityId')
         .populate('serviceBooking')
         .sort({ createdAt: -1 })
@@ -835,7 +835,7 @@ class PaymentService {
    */
   async refundPaymentOrder({ orderId, refundAmount, refundNote = '', requestingUser }) {
     const payment = await Payment.findOne({ orderId })
-      .populate('user', 'firstName lastName email phoneNumber')
+      .populate('user', 'firstName lastName email phoneNumber profileImage')
       .populate('serviceBooking');
 
     if (!payment) {

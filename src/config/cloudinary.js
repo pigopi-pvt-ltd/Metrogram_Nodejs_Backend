@@ -37,6 +37,21 @@ export const uploadBufferToCloudinary = (buffer, options = {}) => {
 };
 
 /**
+ * Upload a user profile image buffer directly to Cloudinary
+ * @param {Buffer} buffer - Image file buffer
+ * @param {Object} options - Custom Cloudinary options
+ * @returns {Promise<Object>} Cloudinary upload result
+ */
+export const uploadProfileImageToCloudinary = (buffer, options = {}) => {
+  return uploadBufferToCloudinary(buffer, {
+    folder: 'metrogram/users/profile_images',
+    resource_type: 'image',
+    public_id: `profile_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+    ...options
+  });
+};
+
+/**
  * Delete a resource from Cloudinary by public ID
  * @param {string} publicId
  * @param {Object} options

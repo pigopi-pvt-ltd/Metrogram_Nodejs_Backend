@@ -1,6 +1,7 @@
 import userService from './user.service.js';
 import { ROLES } from '../../constants/roles.js';
-import { uploadBufferToCloudinary } from '../../config/cloudinary.js';
+import { uploadBufferToCloudinary, uploadProfileImageToCloudinary } from '../../config/cloudinary.js';
+import { extractUploadedProfileImage } from '../../middleware/upload.js';
 
 class UserController {
   /**
@@ -25,9 +26,27 @@ class UserController {
         });
       }
 
+      let profileImageUrl = req.body.profileImage || null;
+      let profileImagePublicId = req.body.profileImagePublicId || null;
+
+      const profileImageFile = extractUploadedProfileImage(req);
+      if (profileImageFile) {
+        const uploadRes = await uploadProfileImageToCloudinary(profileImageFile.buffer);
+        profileImageUrl = uploadRes.secure_url;
+        profileImagePublicId = uploadRes.public_id;
+      }
+
       const newUser = await userService.createUserByRole({
         role,
-        userData: { firstName, lastName, email, password, phoneNumber },
+        userData: {
+          firstName,
+          lastName,
+          email,
+          password,
+          phoneNumber,
+          profileImage: profileImageUrl,
+          profileImagePublicId
+        },
         profileData: profile,
         creatorId: req.user._id,
         creatorRole: req.user.role
@@ -65,9 +84,27 @@ class UserController {
         maxTeamSize
       } = req.body;
 
+      let profileImageUrl = req.body.profileImage || null;
+      let profileImagePublicId = req.body.profileImagePublicId || null;
+
+      const profileImageFile = extractUploadedProfileImage(req);
+      if (profileImageFile) {
+        const uploadRes = await uploadProfileImageToCloudinary(profileImageFile.buffer);
+        profileImageUrl = uploadRes.secure_url;
+        profileImagePublicId = uploadRes.public_id;
+      }
+
       const newManager = await userService.createUserByRole({
         role: ROLES.MANAGER,
-        userData: { firstName, lastName, email, password, phoneNumber },
+        userData: {
+          firstName,
+          lastName,
+          email,
+          password,
+          phoneNumber,
+          profileImage: profileImageUrl,
+          profileImagePublicId
+        },
         profileData: { department, branch, maxTeamSize },
         creatorId: req.user._id,
         creatorRole: req.user.role
@@ -107,9 +144,27 @@ class UserController {
         managerId
       } = req.body;
 
+      let profileImageUrl = req.body.profileImage || null;
+      let profileImagePublicId = req.body.profileImagePublicId || null;
+
+      const profileImageFile = extractUploadedProfileImage(req);
+      if (profileImageFile) {
+        const uploadRes = await uploadProfileImageToCloudinary(profileImageFile.buffer);
+        profileImageUrl = uploadRes.secure_url;
+        profileImagePublicId = uploadRes.public_id;
+      }
+
       const newEmployee = await userService.createUserByRole({
         role: ROLES.EMPLOYEE,
-        userData: { firstName, lastName, email, password, phoneNumber },
+        userData: {
+          firstName,
+          lastName,
+          email,
+          password,
+          phoneNumber,
+          profileImage: profileImageUrl,
+          profileImagePublicId
+        },
         profileData: {
           employeeCode,
           designation,
@@ -168,6 +223,15 @@ class UserController {
       let aadharImagePublicId = req.body.aadharImagePublicId || null;
       let panImageUrl = req.body.panImage || null;
       let panImagePublicId = req.body.panImagePublicId || null;
+      let profileImageUrl = req.body.profileImage || null;
+      let profileImagePublicId = req.body.profileImagePublicId || null;
+
+      const profileImageFile = extractUploadedProfileImage(req);
+      if (profileImageFile) {
+        const uploadRes = await uploadProfileImageToCloudinary(profileImageFile.buffer);
+        profileImageUrl = uploadRes.secure_url;
+        profileImagePublicId = uploadRes.public_id;
+      }
 
       if (req.files) {
         if (req.files.aadharImage && req.files.aadharImage[0]) {
@@ -193,7 +257,15 @@ class UserController {
 
       const newCustomer = await userService.createUserByRole({
         role: ROLES.CUSTOMER,
-        userData: { firstName, lastName, email, password, phoneNumber },
+        userData: {
+          firstName,
+          lastName,
+          email,
+          password,
+          phoneNumber,
+          profileImage: profileImageUrl,
+          profileImagePublicId
+        },
         profileData: {
           customerCode,
           membershipType,
@@ -250,6 +322,16 @@ class UserController {
       if (password) userData.password = password;
       if (phoneNumber !== undefined) userData.phoneNumber = phoneNumber;
       if (isActive !== undefined) userData.isActive = isActive;
+
+      const profileImageFile = extractUploadedProfileImage(req);
+      if (profileImageFile) {
+        const uploadRes = await uploadProfileImageToCloudinary(profileImageFile.buffer);
+        userData.profileImage = uploadRes.secure_url;
+        userData.profileImagePublicId = uploadRes.public_id;
+      } else if (req.body.profileImage !== undefined) {
+        userData.profileImage = req.body.profileImage;
+        userData.profileImagePublicId = req.body.profileImagePublicId || null;
+      }
 
       const profileData = { ...profile, ...rest };
 
@@ -368,6 +450,56 @@ class UserController {
       res.status(200).json({
         success: true,
         data: user
+      });
+    } catch (error) {
+      if (error.statusCode) {
+        return res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        });
+      }
+      next(error);
+    }
+  }
+
+  /**
+   * Dedicated Profile Image Update for specific user (enforcing permissions or self-update)
+   */
+  async updateProfileImage(req, res, next) {
+    try {
+      const targetUserId = req.params.id;
+      const file = extractUploadedProfileImage(req);
+      let profileImageUrl = req.body.profileImage || null;
+      let profileImagePublicId = req.body.profileImagePublicId || null;
+
+      if (file) {
+        const uploadRes = await uploadProfileImageToCloudinary(file.buffer);
+        profileImageUrl = uploadRes.secure_url;
+        profileImagePublicId = uploadRes.public_id;
+      }
+
+      if (!profileImageUrl) {
+        return res.status(400).json({
+          success: false,
+          message: 'Please provide an image file (field: profileImage) or a profileImage URL'
+        });
+      }
+
+      const updatedUser = await userService.updateUser(targetUserId, {
+        userData: {
+          profileImage: profileImageUrl,
+          profileImagePublicId
+        },
+        profileData: {},
+        updaterRole: req.user.role,
+        updaterId: req.user._id,
+        updaterUser: req.user
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'Profile image updated successfully',
+        data: updatedUser
       });
     } catch (error) {
       if (error.statusCode) {

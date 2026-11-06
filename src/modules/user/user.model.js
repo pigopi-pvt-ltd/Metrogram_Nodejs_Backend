@@ -43,6 +43,16 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true
     },
+    profileImage: {
+      type: String,
+      trim: true,
+      default: null
+    },
+    profileImagePublicId: {
+      type: String,
+      trim: true,
+      default: null
+    },
     role: {
       type: String,
       enum: Object.values(ROLES),

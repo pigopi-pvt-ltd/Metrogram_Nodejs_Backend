@@ -1,7 +1,7 @@
 import express from 'express';
 import authController from './auth.controller.js';
 import { protect } from '../../middleware/auth.js';
-import { uploadCustomerDocuments } from '../../middleware/upload.js';
+import { uploadCustomerDocuments, uploadProfileImage } from '../../middleware/upload.js';
 
 const router = express.Router();
 
@@ -10,6 +10,8 @@ router.post('/register', uploadCustomerDocuments, authController.register.bind(a
 router.post('/login', authController.login.bind(authController));
 router.post('/logout', authController.logout.bind(authController));
 router.get('/me', protect, authController.getMe.bind(authController));
+router.patch('/profile-image', protect, uploadProfileImage, authController.updateProfileImage.bind(authController));
+router.put('/profile-image', protect, uploadProfileImage, authController.updateProfileImage.bind(authController));
 
 // Password Management Endpoints
 router.post('/change-password', protect, authController.changePassword.bind(authController));

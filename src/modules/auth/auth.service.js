@@ -5,6 +5,7 @@ import Customer from '../customer/customer.model.js';
 import CardPlan from '../card/cardPlan.model.js';
 import { ROLES, PROFILE_MODELS } from '../../constants/roles.js';
 import emailService from '../../services/email.service.js';
+import { deleteFromCloudinary } from '../../config/cloudinary.js';
 
 class AuthService {
   generateToken(id) {
@@ -104,6 +105,8 @@ class AuthService {
       email: userData.email.toLowerCase(),
       password: userData.password,
       phoneNumber: userData.phoneNumber,
+      profileImage: userData.profileImage || null,
+      profileImagePublicId: userData.profileImagePublicId || null,
       role: ROLES.CUSTOMER,
       profileModel: PROFILE_MODELS[ROLES.CUSTOMER],
       createdBy: null
@@ -349,6 +352,32 @@ class AuthService {
     });
 
     return { message: 'Password has been reset successfully. You can now log in.' };
+  }
+
+  /**
+   * Update Profile Image for authenticated user
+   */
+  async updateUserProfileImage(userId, { profileImage, profileImagePublicId = null }) {
+    const user = await User.findById(userId);
+    if (!user) {
+      const err = new Error('User not found');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    if (user.profileImagePublicId && user.profileImagePublicId !== profileImagePublicId) {
+      deleteFromCloudinary(user.profileImagePublicId).catch((err) => {
+        console.error('[Cloudinary] Failed to delete old profile image:', err.message);
+      });
+    }
+
+    user.profileImage = profileImage;
+    user.profileImagePublicId = profileImagePublicId;
+    await user.save();
+
+    return await User.findById(userId)
+      .populate('profile')
+      .populate('createdBy', 'firstName lastName email role');
   }
 }
 

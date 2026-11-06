@@ -146,8 +146,8 @@ class DashboardService {
           .sort({ createdAt: -1 })
           .limit(5),
         Customer.find(customerScopeFilter)
-          .populate('user', 'firstName lastName email phoneNumber isActive createdAt')
-          .populate('assignedEmployee', 'firstName lastName email phoneNumber')
+          .populate('user', 'firstName lastName email phoneNumber isActive createdAt profileImage')
+          .populate('assignedEmployee', 'firstName lastName email phoneNumber profileImage')
           .sort({ createdAt: -1 })
           .limit(5)
       ]);
@@ -184,8 +184,8 @@ class DashboardService {
         Customer.countDocuments(customerScopeFilter),
         Customer.countDocuments(customerScopeFilter),
         Customer.find(customerScopeFilter)
-          .populate('user', 'firstName lastName email phoneNumber isActive createdAt')
-          .populate('assignedEmployee', 'firstName lastName email phoneNumber')
+          .populate('user', 'firstName lastName email phoneNumber isActive createdAt profileImage')
+          .populate('assignedEmployee', 'firstName lastName email phoneNumber profileImage')
           .sort({ createdAt: -1 })
           .limit(5)
       ]);

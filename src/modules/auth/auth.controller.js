@@ -1,5 +1,6 @@
 import authService from './auth.service.js';
-import { uploadBufferToCloudinary } from '../../config/cloudinary.js';
+import { uploadBufferToCloudinary, uploadProfileImageToCloudinary } from '../../config/cloudinary.js';
+import { extractUploadedProfileImage } from '../../middleware/upload.js';
 
 const getCookieOptions = () => {
   const isProduction = process.env.NODE_ENV === 'production';
@@ -40,6 +41,16 @@ class AuthController {
       let aadharImagePublicId = req.body.aadharImagePublicId || null;
       let panImageUrl = req.body.panImage || null;
       let panImagePublicId = req.body.panImagePublicId || null;
+      let profileImageUrl = req.body.profileImage || null;
+      let profileImagePublicId = req.body.profileImagePublicId || null;
+
+      // Check uploaded profile image
+      const profileImageFile = extractUploadedProfileImage(req);
+      if (profileImageFile) {
+        const uploadRes = await uploadProfileImageToCloudinary(profileImageFile.buffer);
+        profileImageUrl = uploadRes.secure_url;
+        profileImagePublicId = uploadRes.public_id;
+      }
 
       // Handle document uploads from multer memory buffer
       if (req.files) {
@@ -65,7 +76,15 @@ class AuthController {
       }
 
       const { token, user } = await authService.registerCustomer({
-        userData: { firstName, lastName, email, password, phoneNumber },
+        userData: {
+          firstName,
+          lastName,
+          email,
+          password,
+          phoneNumber,
+          profileImage: profileImageUrl,
+          profileImagePublicId
+        },
         profileData: {
           customerCode,
           membershipType,
@@ -94,6 +113,7 @@ class AuthController {
           email: user.email,
           phoneNumber: user.phoneNumber,
           role: user.role,
+          profileImage: user.profileImage || null,
           profile: user.profile,
           createdAt: user.createdAt
         }
@@ -129,6 +149,7 @@ class AuthController {
           email: user.email,
           phoneNumber: user.phoneNumber,
           role: user.role,
+          profileImage: user.profileImage || null,
           profile: user.profile,
           createdAt: user.createdAt
         }
@@ -232,6 +253,46 @@ class AuthController {
       res.status(200).json({
         success: true,
         message: result.message
+      });
+    } catch (error) {
+      if (error.statusCode) {
+        return res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        });
+      }
+      next(error);
+    }
+  }
+
+  async updateProfileImage(req, res, next) {
+    try {
+      const file = extractUploadedProfileImage(req);
+      let profileImageUrl = req.body.profileImage || null;
+      let profileImagePublicId = req.body.profileImagePublicId || null;
+
+      if (file) {
+        const uploadRes = await uploadProfileImageToCloudinary(file.buffer);
+        profileImageUrl = uploadRes.secure_url;
+        profileImagePublicId = uploadRes.public_id;
+      }
+
+      if (!profileImageUrl) {
+        return res.status(400).json({
+          success: false,
+          message: 'Please provide an image file (field: profileImage) or a profileImage URL'
+        });
+      }
+
+      const updatedUser = await authService.updateUserProfileImage(req.user._id, {
+        profileImage: profileImageUrl,
+        profileImagePublicId
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'Profile image updated successfully',
+        data: updatedUser
       });
     } catch (error) {
       if (error.statusCode) {

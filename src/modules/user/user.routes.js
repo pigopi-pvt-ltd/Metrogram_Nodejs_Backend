@@ -3,28 +3,30 @@ import userController from './user.controller.js';
 import { protect } from '../../middleware/auth.js';
 import { authorize, verifyCanCreateRole } from '../../middleware/roleCheck.js';
 import { ROLES } from '../../constants/roles.js';
-import { uploadCustomerDocuments } from '../../middleware/upload.js';
+import { uploadCustomerDocuments, uploadProfileImage } from '../../middleware/upload.js';
 
 const router = express.Router();
 
 // Apply auth middleware to all user endpoints
 router.use(protect);
 
-// 1. Super Admin can add Manager
+// 1. Super Admin can add Manager (supports profile image upload)
 router.post(
   '/manager',
   authorize(ROLES.SUPER_ADMIN),
+  uploadProfileImage,
   userController.createManager.bind(userController)
 );
 
-// 2. Super Admin & Manager can add Employee
+// 2. Super Admin & Manager can add Employee (supports profile image upload)
 router.post(
   '/employee',
   authorize(ROLES.SUPER_ADMIN, ROLES.MANAGER),
+  uploadProfileImage,
   userController.createEmployee.bind(userController)
 );
 
-// 3. Super Admin, Manager & Employee can add Customer (supports multipart/form-data for document uploads)
+// 3. Super Admin, Manager & Employee can add Customer (supports multipart/form-data for document & profile image uploads)
 router.post(
   '/customer',
   authorize(ROLES.SUPER_ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE),
@@ -32,11 +34,12 @@ router.post(
   userController.createCustomer.bind(userController)
 );
 
-// 4. Generic user creation (enforces hierarchy)
+// 4. Generic user creation (enforces hierarchy, supports document & profile image uploads)
 router.post(
   '/',
   authorize(ROLES.SUPER_ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE),
   verifyCanCreateRole,
+  uploadCustomerDocuments,
   userController.createUser.bind(userController)
 );
 
@@ -48,7 +51,15 @@ router.get('/:id', userController.getUserById.bind(userController));
 router.put(
   '/:id',
   authorize(ROLES.SUPER_ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE),
+  uploadCustomerDocuments,
   userController.updateUser.bind(userController)
+);
+
+// 6.5 Dedicated profile image update for user
+router.patch(
+  '/:id/profile-image',
+  uploadProfileImage,
+  userController.updateProfileImage.bind(userController)
 );
 
 // 7. Toggle status (Active / Inactive)
