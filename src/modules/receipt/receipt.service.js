@@ -1,5 +1,6 @@
 import Payment from '../payment/payment.model.js';
 import ServiceBooking from '../service/serviceBooking.model.js';
+import PackageBooking from '../package/packageBooking.model.js';
 import Customer from '../customer/customer.model.js';
 import receiptPdfService from './receipt.pdf.js';
 import emailService from '../../services/email.service.js';
@@ -29,7 +30,8 @@ class ReceiptService {
       .populate('user', 'firstName lastName email phoneNumber profileImage')
       .populate('customer')
       .populate('entityId')
-      .populate('serviceBooking');
+      .populate('serviceBooking')
+      .populate('packageBooking');
 
     if (!payment) {
       const err = new Error(`Payment receipt not found for '${paymentIdOrOrderId}'`);
@@ -119,6 +121,43 @@ class ReceiptService {
       }
 
       hospitalName = booking?.hospitalName || payment.bookingDetails?.hospitalName || service?.hospitalName || '';
+    } else if (payment.entityType === 'PACKAGE') {
+      const booking = payment.packageBooking;
+      const pkg = payment.entityId;
+
+      itemName = pkg?.packageName || payment.bookingDetails?.packageName || payment.bookingDetails?.testName || 'Diagnostic Health Package';
+      itemDescription = pkg?.description || `Comprehensive Health Package (${pkg?.packageType || 'Diagnostic'})`;
+      sampleType = pkg?.sampleType || payment.bookingDetails?.sampleType || '';
+      collectionType = booking?.collectionType || payment.bookingDetails?.collectionType || 'LAB_VISIT';
+      scheduledDate = booking?.scheduledDate || payment.bookingDetails?.scheduledDate || null;
+      timeSlot = booking?.timeSlot || payment.bookingDetails?.timeSlot || '';
+      originalPrice = booking?.originalPrice || pkg?.price || payment.amount;
+
+      if (booking?.patientDetails) {
+        patientDetails = {
+          name: booking.patientDetails.name,
+          age: booking.patientDetails.age,
+          gender: booking.patientDetails.gender,
+          phone: booking.patientDetails.phone,
+          email: booking.patientDetails.email
+        };
+      } else if (payment.bookingDetails) {
+        patientDetails = {
+          name: payment.bookingDetails.patientName,
+          age: payment.bookingDetails.patientAge,
+          gender: payment.bookingDetails.patientGender,
+          phone: payment.bookingDetails.patientPhone,
+          email: payment.bookingDetails.patientEmail
+        };
+      }
+
+      if (booking?.collectionAddress) {
+        collectionAddress = this.formatAddress(booking.collectionAddress);
+      } else if (payment.bookingDetails?.address) {
+        collectionAddress = this.formatAddress(payment.bookingDetails.address);
+      }
+
+      hospitalName = booking?.hospitalName || payment.bookingDetails?.hospitalName || pkg?.hospitalName || '';
     }
 
     const receiptNumber = `REC-${payment.orderId.replace(/^ORD_/, '')}`;
@@ -160,13 +199,24 @@ class ReceiptService {
     const isObjectId = /^[0-9a-fA-F]{24}$/.test(bookingIdOrCode);
     const query = isObjectId ? { _id: bookingIdOrCode } : { bookingCode: bookingIdOrCode };
 
-    const booking = await ServiceBooking.findOne(query)
+    let booking = await ServiceBooking.findOne(query)
       .populate('customer', 'firstName lastName email phoneNumber profileImage')
       .populate('service')
       .populate('payment');
 
+    let isPackage = false;
     if (!booking) {
-      const err = new Error(`Service booking receipt not found for '${bookingIdOrCode}'`);
+      booking = await PackageBooking.findOne(query)
+        .populate('customer', 'firstName lastName email phoneNumber profileImage')
+        .populate('package')
+        .populate('payment');
+      if (booking) {
+        isPackage = true;
+      }
+    }
+
+    if (!booking) {
+      const err = new Error(`Booking receipt not found for '${bookingIdOrCode}'`);
       err.statusCode = 404;
       throw err;
     }
@@ -190,6 +240,14 @@ class ReceiptService {
 
     const receiptNumber = `REC-${booking.bookingCode}`;
 
+    const targetItem = isPackage ? booking.package : booking.service;
+    const itemName = isPackage
+      ? (targetItem?.packageName || 'Diagnostic Health Package')
+      : (targetItem?.testName || 'Diagnostic Test');
+    const itemDescription = isPackage
+      ? (targetItem?.description || 'Comprehensive Diagnostic Health Package')
+      : (targetItem?.description || 'Diagnostic medical laboratory test');
+
     return {
       companyInfo: COMPANY_INFO,
       receiptNumber,
@@ -202,13 +260,13 @@ class ReceiptService {
       customerEmail: userEmail,
       customerPhone: userPhone,
       customerAddress: this.formatAddress(booking.collectionAddress),
-      itemType: 'SERVICE',
-      itemName: booking.service?.testName || 'Diagnostic Test',
-      itemDescription: booking.service?.description || 'Diagnostic medical laboratory test',
+      itemType: isPackage ? 'PACKAGE' : 'SERVICE',
+      itemName,
+      itemDescription,
       amountPaid: booking.amountPaid,
       originalPrice: booking.originalPrice || booking.amountPaid,
-      sampleType: booking.service?.sampleType || '',
-      hospitalName: booking.hospitalName || booking.payment?.bookingDetails?.hospitalName || booking.service?.hospitalName || '',
+      sampleType: targetItem?.sampleType || '',
+      hospitalName: booking.hospitalName || booking.payment?.bookingDetails?.hospitalName || targetItem?.hospitalName || '',
       collectionType: booking.collectionType || 'LAB_VISIT',
       scheduledDate: booking.scheduledDate,
       timeSlot: booking.timeSlot,

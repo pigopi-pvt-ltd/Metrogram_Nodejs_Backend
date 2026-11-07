@@ -17,8 +17,8 @@ const paymentSchema = new mongoose.Schema(
     },
     entityType: {
       type: String,
-      enum: ['CARD', 'SERVICE'],
-      required: [true, 'Entity type is required (CARD or SERVICE)']
+      enum: ['CARD', 'SERVICE', 'PACKAGE'],
+      required: [true, 'Entity type is required (CARD, SERVICE, or PACKAGE)']
     },
     entityId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -27,7 +27,7 @@ const paymentSchema = new mongoose.Schema(
     },
     entityModel: {
       type: String,
-      enum: ['CardPlan', 'Service'],
+      enum: ['CardPlan', 'Service', 'Package'],
       required: [true, 'Entity model name is required']
     },
     user: {
@@ -103,6 +103,11 @@ const paymentSchema = new mongoose.Schema(
     serviceBooking: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'ServiceBooking',
+      default: null
+    },
+    packageBooking: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'PackageBooking',
       default: null
     },
     cardDetails: {

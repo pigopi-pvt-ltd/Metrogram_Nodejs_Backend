@@ -154,6 +154,22 @@ Role permissions are defined in `src/constants/roles.js`:
 - `PATCH /api/categories/:id/status` — Toggle category active status (`SUPER_ADMIN` only).
 - `DELETE /api/categories/:id` — Delete category (safely blocked if any tests are assigned to it) (`SUPER_ADMIN` only).
 
+### 📦 1.6 Health Packages (`/api/packages`)
+- `GET /api/packages` — List all packages with filters (`packageType`, `testType`, `sampleType`, `search`, `requiresFasting`, `isActive`, `page`, `limit`, `sortBy`, `sortOrder`) [Public for Landing Page & Catalog].
+- `GET /api/packages/types` or `GET /api/packages/categories` — Get distinct package types and sample types (returns empty `categories: []` for frontend compatibility) [Public].
+- `GET /api/packages/:id` — View details of single package [Public].
+- `POST /api/packages` — Create new package (`SUPER_ADMIN` only; same structure as diagnostic tests except **no category required**). Supports `packageName` (or `testName`/`name`), `description`, `price`, `discountedPrice`, `reportTime`, `sampleType`, `parametersMeasured`, `testsIncluded`, `tests`, `requiresFasting`, `faqs`, etc.
+- `PUT /api/packages/:id` — Update package details (`SUPER_ADMIN` only).
+- `PATCH /api/packages/:id/status` — Toggle package active/inactive status (`SUPER_ADMIN` only).
+- `DELETE /api/packages/:id` — Delete package (`SUPER_ADMIN` only).
+- `GET /api/packages/bookings/my-bookings` — Customer view their package bookings.
+- `GET /api/packages/bookings` — Staff view all package bookings (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
+- `GET /api/packages/bookings/:id` — View single package booking details.
+- `GET /api/packages/bookings/:id/receipt` — Download PDF receipt for package booking.
+- `GET /api/packages/bookings/:id/report` — Download/stream package result report PDF (Customer / Staff / verified token link).
+- `POST /api/packages/bookings/:id/cancel` — Cancel package booking with automated Cashfree refund.
+- `PATCH /api/packages/bookings/:id/status` — Update package booking sample status, completion, hospital name, or upload report PDF (`SUPER_ADMIN`, `MANAGER`, `EMPLOYEE`).
+
 ### 💳 2. Membership Health Cards (`/api/cards`)
 - `GET /api/cards/plans` — List active card plans (`MONTHLY`, `YEARLY`, `QUARTERLY`) [Public for Landing Page].
 - `GET /api/cards/plans/:id` — View single card plan [Public].

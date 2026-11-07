@@ -3,6 +3,8 @@ import Payment from './payment.model.js';
 import CardPlan from '../card/cardPlan.model.js';
 import Service from '../service/service.model.js';
 import ServiceBooking from '../service/serviceBooking.model.js';
+import Package from '../package/package.model.js';
+import PackageBooking from '../package/packageBooking.model.js';
 import Customer from '../customer/customer.model.js';
 import User from '../user/user.model.js';
 import { getCashfreeClient, getCashfreeEnvironment } from '../../config/cashfree.js';
@@ -46,8 +48,8 @@ class PaymentService {
     manualCardNumber = '',
     cardNumberSuffix = ''
   }) {
-    if (!['CARD', 'SERVICE'].includes(entityType)) {
-      const err = new Error("Invalid entityType. Must be 'CARD' or 'SERVICE'");
+    if (!['CARD', 'SERVICE', 'PACKAGE'].includes(entityType)) {
+      const err = new Error("Invalid entityType. Must be 'CARD', 'SERVICE', or 'PACKAGE'");
       err.statusCode = 400;
       throw err;
     }
@@ -199,6 +201,65 @@ class PaymentService {
       };
 
       orderNote = `Diagnostic Test: ${service.testName}${isCardDiscountApplied ? ' (Card Member Discount)' : ''}`;
+    } else if (entityType === 'PACKAGE') {
+      entityModel = 'Package';
+      const pkg = await Package.findById(entityId);
+      if (!pkg) {
+        const err = new Error('Package not found');
+        err.statusCode = 404;
+        throw err;
+      }
+      if (!pkg.isActive) {
+        const err = new Error('This Package is currently inactive');
+        err.statusCode = 400;
+        throw err;
+      }
+
+      originalPrice = Number(pkg.price);
+
+      // Check if customer holds an active health card
+      const hasActiveCard =
+        customerProfile?.hasCard &&
+        customerProfile?.activeCard &&
+        customerProfile.activeCard.status === 'ACTIVE' &&
+        (!customerProfile.activeCard.expiresAt || new Date() < new Date(customerProfile.activeCard.expiresAt));
+
+      if (hasActiveCard) {
+        amount = Number(pkg.discountedPrice);
+        isCardDiscountApplied = true;
+      } else {
+        amount = Number(pkg.price);
+        isCardDiscountApplied = false;
+      }
+
+      const requestedHospital = (
+        bookingDetails.hospitalName ||
+        bookingDetails.hospital ||
+        bookingDetails.labName ||
+        bookingDetails.preferredHospital ||
+        pkg.hospitalName ||
+        ''
+      ).trim();
+
+      formattedBookingDetails = {
+        testName: pkg.packageName,
+        packageName: pkg.packageName,
+        sampleType: pkg.sampleType,
+        reportTime: pkg.reportTime,
+        hospitalName: requestedHospital,
+        patientName: bookingDetails.patientName || `${user.firstName} ${user.lastName}`.trim(),
+        patientAge: bookingDetails.patientAge ? Number(bookingDetails.patientAge) : undefined,
+        patientGender: bookingDetails.patientGender || undefined,
+        patientPhone: bookingDetails.patientPhone || user.phoneNumber || '',
+        patientEmail: bookingDetails.patientEmail || user.email || '',
+        scheduledDate: bookingDetails.scheduledDate ? new Date(bookingDetails.scheduledDate) : null,
+        timeSlot: bookingDetails.timeSlot || '',
+        collectionType: bookingDetails.collectionType || 'LAB_VISIT',
+        address: bookingDetails.address || {},
+        notes: bookingDetails.notes || customNotes || ''
+      };
+
+      orderNote = `Health Package: ${pkg.packageName}${isCardDiscountApplied ? ' (Card Member Discount)' : ''}`;
     }
 
     if (amount <= 0) {
@@ -441,6 +502,45 @@ class PaymentService {
         await booking.save();
         paymentDoc.serviceBooking = booking._id;
       }
+    } else if (paymentDoc.entityType === 'PACKAGE') {
+      const pkg = await Package.findById(paymentDoc.entityId?._id || paymentDoc.entityId);
+      if (pkg) {
+        const timestamp = Date.now().toString(36).toUpperCase();
+        const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
+        const bookingCode = `BK-PK-${timestamp}-${rand}`;
+
+        const isDiscountApplied = paymentDoc.amount < pkg.price;
+        const discountAmount = isDiscountApplied ? pkg.price - paymentDoc.amount : 0;
+
+        const booking = new PackageBooking({
+          bookingCode,
+          customer: userId,
+          package: pkg._id,
+          payment: paymentDoc._id,
+          hospitalName: paymentDoc.bookingDetails?.hospitalName || pkg.hospitalName || '',
+          amountPaid: paymentDoc.amount,
+          originalPrice: pkg.price,
+          discountApplied: discountAmount,
+          isCardDiscountApplied: isDiscountApplied,
+          bookingStatus: 'CONFIRMED',
+          paymentStatus: 'PAID',
+          patientDetails: {
+            name: paymentDoc.bookingDetails?.patientName || paymentDoc.customerDetails?.name || 'Customer',
+            age: paymentDoc.bookingDetails?.patientAge,
+            gender: paymentDoc.bookingDetails?.patientGender,
+            phone: paymentDoc.bookingDetails?.patientPhone || paymentDoc.customerDetails?.phone,
+            email: paymentDoc.bookingDetails?.patientEmail || paymentDoc.customerDetails?.email
+          },
+          collectionType: paymentDoc.bookingDetails?.collectionType || 'LAB_VISIT',
+          collectionAddress: paymentDoc.bookingDetails?.address || {},
+          scheduledDate: paymentDoc.bookingDetails?.scheduledDate || null,
+          timeSlot: paymentDoc.bookingDetails?.timeSlot || '',
+          notes: paymentDoc.bookingDetails?.notes || ''
+        });
+
+        await booking.save();
+        paymentDoc.packageBooking = booking._id;
+      }
     }
 
     if (paymentAttempt) {
@@ -471,7 +571,8 @@ class PaymentService {
     const payment = await Payment.findOne({ orderId })
       .populate('user', 'firstName lastName email phoneNumber profileImage')
       .populate('entityId')
-      .populate('serviceBooking');
+      .populate('serviceBooking')
+      .populate('packageBooking');
 
     if (!payment) {
       const err = new Error(`Payment order with ID '${orderId}' not found`);
@@ -485,7 +586,8 @@ class PaymentService {
       return await Payment.findById(payment._id)
         .populate('user', 'firstName lastName email phoneNumber profileImage')
         .populate('entityId')
-        .populate('serviceBooking');
+        .populate('serviceBooking')
+        .populate('packageBooking');
     }
 
     const cf = this.getClient();
@@ -541,7 +643,8 @@ class PaymentService {
     return await Payment.findById(payment._id)
       .populate('user', 'firstName lastName email phoneNumber profileImage')
       .populate('entityId')
-      .populate('serviceBooking');
+      .populate('serviceBooking')
+      .populate('packageBooking');
   }
 
   /**
@@ -696,6 +799,12 @@ class PaymentService {
             refundStatus: 'SUCCESS'
           });
         }
+        if (payment.packageBooking) {
+          await PackageBooking.findByIdAndUpdate(payment.packageBooking, {
+            paymentStatus: 'REFUNDED',
+            refundStatus: 'SUCCESS'
+          });
+        }
       } else if (status === 'FAILED') {
         if (payment.refundDetails) {
           payment.refundDetails.refundStatus = 'FAILED';
@@ -703,6 +812,11 @@ class PaymentService {
         await payment.save();
         if (payment.serviceBooking) {
           await ServiceBooking.findByIdAndUpdate(payment.serviceBooking, {
+            refundStatus: 'FAILED'
+          });
+        }
+        if (payment.packageBooking) {
+          await PackageBooking.findByIdAndUpdate(payment.packageBooking, {
             refundStatus: 'FAILED'
           });
         }
@@ -719,7 +833,8 @@ class PaymentService {
     const payment = await Payment.findOne({ orderId })
       .populate('user', 'firstName lastName email phoneNumber profileImage')
       .populate('entityId')
-      .populate('serviceBooking');
+      .populate('serviceBooking')
+      .populate('packageBooking');
 
     if (!payment) {
       const err = new Error('Payment not found');
@@ -757,6 +872,7 @@ class PaymentService {
       Payment.find(filter)
         .populate('entityId')
         .populate('serviceBooking')
+        .populate('packageBooking')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limitNum),
@@ -814,6 +930,7 @@ class PaymentService {
         .populate('user', 'firstName lastName email phoneNumber profileImage')
         .populate('entityId')
         .populate('serviceBooking')
+        .populate('packageBooking')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limitNum),
@@ -836,7 +953,8 @@ class PaymentService {
   async refundPaymentOrder({ orderId, refundAmount, refundNote = '', requestingUser }) {
     const payment = await Payment.findOne({ orderId })
       .populate('user', 'firstName lastName email phoneNumber profileImage')
-      .populate('serviceBooking');
+      .populate('serviceBooking')
+      .populate('packageBooking');
 
     if (!payment) {
       const err = new Error(`Payment order with ID '${orderId}' not found`);
@@ -910,6 +1028,22 @@ class PaymentService {
     // Update linked ServiceBooking if present
     if (payment.serviceBooking) {
       const booking = await ServiceBooking.findById(payment.serviceBooking._id || payment.serviceBooking);
+      if (booking) {
+        booking.bookingStatus = 'CANCELLED';
+        booking.paymentStatus = cfRefundStatus === 'SUCCESS' ? 'REFUNDED' : booking.paymentStatus;
+        booking.refundId = refundId;
+        booking.refundAmount = amountToRefund;
+        booking.refundStatus = cfRefundStatus;
+        booking.cancelledAt = new Date();
+        booking.cancelledBy = requestingUser?._id || payment.user._id;
+        booking.cancellationReason = refundNote || 'Cancelled with Cashfree refund';
+        await booking.save();
+      }
+    }
+
+    // Update linked PackageBooking if present
+    if (payment.packageBooking) {
+      const booking = await PackageBooking.findById(payment.packageBooking._id || payment.packageBooking);
       if (booking) {
         booking.bookingStatus = 'CANCELLED';
         booking.paymentStatus = cfRefundStatus === 'SUCCESS' ? 'REFUNDED' : booking.paymentStatus;

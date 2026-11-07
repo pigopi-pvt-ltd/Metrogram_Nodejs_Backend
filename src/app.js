@@ -18,6 +18,7 @@ import receiptRoutes from "./modules/receipt/receipt.routes.js";
 import careerRoutes from "./modules/career/career.routes.js";
 import franchiseRoutes from "./modules/franchise/franchise.routes.js";
 import categoryRoutes from "./modules/category/category.routes.js";
+import packageRoutes from "./modules/package/package.routes.js";
 
 const app = express();
 
@@ -74,7 +75,8 @@ app.get("/", (req, res) => {
       careers: "/api/careers",
       jobs: "/api/jobs",
       franchise: "/api/franchise",
-      categories: "/api/categories"
+      categories: "/api/categories",
+      packages: "/api/packages"
     },
   });
 });
@@ -98,6 +100,7 @@ app.use("/api/customers", customerRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/services", serviceRoutes);
+app.use("/api/packages", packageRoutes);
 app.use("/api/cards", cardRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/receipts", receiptRoutes);

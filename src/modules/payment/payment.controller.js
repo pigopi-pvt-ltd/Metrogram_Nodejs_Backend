@@ -38,7 +38,7 @@ class PaymentController {
       if (!entityType || !entityId) {
         return res.status(400).json({
           success: false,
-          message: 'entityType (CARD or SERVICE) and entityId are required'
+          message: 'entityType (CARD, SERVICE, or PACKAGE) and entityId are required'
         });
       }
 

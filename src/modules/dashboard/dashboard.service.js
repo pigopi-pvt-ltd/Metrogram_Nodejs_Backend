@@ -3,9 +3,11 @@ import Manager from '../manager/manager.model.js';
 import Employee from '../employee/employee.model.js';
 import Customer from '../customer/customer.model.js';
 import Service from '../service/service.model.js';
+import Package from '../package/package.model.js';
 import CardPlan from '../card/cardPlan.model.js';
 import Payment from '../payment/payment.model.js';
 import ServiceBooking from '../service/serviceBooking.model.js';
+import PackageBooking from '../package/packageBooking.model.js';
 import FranchiseEnquiry from '../franchise/franchise.model.js';
 import customerService from '../customer/customer.service.js';
 import { ROLES } from '../../constants/roles.js';
@@ -26,8 +28,10 @@ class DashboardService {
         activeUsers,
         inactiveUsers,
         totalServices,
+        totalPackages,
         totalCardPlans,
-        totalBookings,
+        totalServiceBookings,
+        totalPackageBookings,
         paidPaymentsCount,
         revenueAggregate,
         totalDistributedCards,
@@ -46,8 +50,10 @@ class DashboardService {
         User.countDocuments({ isActive: true }),
         User.countDocuments({ isActive: false }),
         Service.countDocuments(),
+        Package.countDocuments(),
         CardPlan.countDocuments(),
         ServiceBooking.countDocuments(),
+        PackageBooking.countDocuments(),
         Payment.countDocuments({ status: 'PAID' }),
         Payment.aggregate([
           { $match: { status: 'PAID' } },
@@ -97,10 +103,13 @@ class DashboardService {
           activeUsers,
           inactiveUsers,
           totalServices,
+          totalPackages,
           totalCardPlans,
           totalDistributedCards,
           activeCardsCount,
-          totalBookings,
+          totalBookings: totalServiceBookings + totalPackageBookings,
+          totalServiceBookings,
+          totalPackageBookings,
           paidPaymentsCount,
           totalRevenue,
           totalFranchiseEnquiries,

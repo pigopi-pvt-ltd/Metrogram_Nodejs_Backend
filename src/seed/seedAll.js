@@ -9,6 +9,8 @@ import categoryService from '../modules/category/category.service.js';
 import Category from '../modules/category/category.model.js';
 import serviceService from '../modules/service/service.service.js';
 import Service from '../modules/service/service.model.js';
+import packageService from '../modules/package/package.service.js';
+import Package from '../modules/package/package.model.js';
 import cardService from '../modules/card/card.service.js';
 import CardPlan from '../modules/card/cardPlan.model.js';
 import User from '../modules/user/user.model.js';
@@ -253,6 +255,103 @@ const seedAll = async () => {
         } else {
           console.log(`   ℹ️ Test already exists: ${serv.testName}`);
         }
+      }
+    }
+
+    // 3.5. Seed Diagnostic Health Packages (Super Admin Configured - NO Category)
+    console.log('\n3️⃣.5️⃣ Seeding Diagnostic Health Packages (Without Category)...');
+    const samplePackages = [
+      {
+        packageName: 'Metro Comprehensive Full Body Checkup Package',
+        description: 'Complete health checkup covering 70+ essential parameters including CBC, Lipid Profile, Liver Function, Kidney Function, Thyroid Profile, and Diabetes Screening.',
+        packageType: 'Full Body Wellness',
+        testType: 'Comprehensive Health Package',
+        reportTime: '24 hours',
+        sampleType: 'Blood & Urine',
+        hospitalName: 'MetroGram Central Diagnostics',
+        price: 2499,
+        discountedPrice: 1299,
+        parametersMeasured: [
+          'Complete Blood Count (CBC) - 24 Parameters',
+          'Lipid Profile - Cholesterol, HDL, LDL, Triglycerides',
+          'Liver Function Test (LFT) - SGOT, SGPT, Bilirubin',
+          'Kidney Function Test (KFT) - Creatinine, Urea, Uric Acid',
+          'Thyroid Profile - T3, T4, TSH',
+          'Fasting Blood Glucose',
+          'HbA1c Glycated Hemoglobin',
+          'Complete Urine Examination (CUE)'
+        ],
+        testsIncluded: [
+          'Complete Blood Count (CBC)',
+          'Lipid Profile Test',
+          'Liver Function Test (LFT)',
+          'Kidney Function Test (KFT)',
+          'Thyroid Profile (T3, T4, TSH)',
+          'Fasting Blood Glucose (FBS)',
+          'HbA1c'
+        ],
+        requiresFasting: true,
+        fastingDuration: '10-12 hours overnight fasting required',
+        preparationInstructions: 'Fast overnight for 10-12 hours before sample collection. Avoid alcohol 24 hours prior.',
+        faqs: [
+          {
+            question: 'How often should I take this full body package?',
+            answer: 'It is recommended to take a full body checkup once every 6 to 12 months for preventive health management.'
+          },
+          {
+            question: 'Is fasting required for this package?',
+            answer: 'Yes, 10-12 hours of overnight fasting is mandatory for accurate lipid and glucose readings.'
+          }
+        ],
+        isActive: true
+      },
+      {
+        packageName: 'Senior Citizen Vital Health Package',
+        description: 'Tailored health package for seniors focusing on cardiac health, bone density markers, kidney, liver, electrolytes, and metabolic monitoring.',
+        packageType: 'Geriatric Wellness',
+        testType: 'Senior Health Package',
+        reportTime: '24-36 hours',
+        sampleType: 'Blood & Urine',
+        hospitalName: 'MetroGram Central Diagnostics',
+        price: 3499,
+        discountedPrice: 1899,
+        parametersMeasured: [
+          'Complete Blood Count (CBC)',
+          'Cardiac Risk Markers - hs-CRP & Lipid Profile',
+          'Vitamin D & Calcium (Bone Health)',
+          'Vitamin B12',
+          'Kidney & Liver Function Profiles',
+          'Serum Electrolytes (Sodium, Potassium, Chloride)',
+          'HbA1c & Fasting Sugar'
+        ],
+        testsIncluded: [
+          'Complete Blood Count',
+          'Lipid Profile',
+          'Vitamin D 25-Hydroxy',
+          'Serum Calcium',
+          'Electrolyte Panel',
+          'HbA1c'
+        ],
+        requiresFasting: true,
+        fastingDuration: '10-12 hours fasting',
+        preparationInstructions: 'Maintain regular hydration with plain water. Continue regular morning medications unless advised by your physician.',
+        faqs: [
+          {
+            question: 'Can this sample be collected at home?',
+            answer: 'Yes, our certified phlebotomists provide safe and convenient doorstep home collection for senior citizens.'
+          }
+        ],
+        isActive: true
+      }
+    ];
+
+    for (const pkg of samplePackages) {
+      const existingPackage = await Package.findOne({ packageName: pkg.packageName });
+      if (!existingPackage) {
+        await packageService.createPackage(pkg, superAdmin._id);
+        console.log(`   ✅ Package Created: ${pkg.packageName} (₹${pkg.price} -> Card Discount: ₹${pkg.discountedPrice})`);
+      } else {
+        console.log(`   ℹ️ Package already exists: ${pkg.packageName}`);
       }
     }
 
