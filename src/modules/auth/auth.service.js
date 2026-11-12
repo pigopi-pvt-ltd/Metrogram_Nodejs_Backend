@@ -21,7 +21,7 @@ class AuthService {
       throw err;
     }
 
-    const user = await User.findOne({ email: email })
+    const user = await User.findOne({ email: email.toLowerCase() })
       .select("+password")
       .populate("profile");
 
